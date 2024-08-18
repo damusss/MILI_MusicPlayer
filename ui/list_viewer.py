@@ -1,8 +1,8 @@
 import mili
 import pygame
-from ui_new_playlist import NewPlaylistUI
-from ui_rename_playlist import RenamePlaylistUI
-from ui_common import *
+from ui.new_playlist import NewPlaylistUI
+from ui.rename_playlist import RenamePlaylistUI
+from ui.common import *
 
 
 class ListViewerUI(UIComponent):

@@ -1,11 +1,11 @@
 import pygame
 import mili
 import pathlib
-from ui_list_viewer import ListViewerUI
-from ui_playlist_viewer import PlaylistViewerUI
-from ui_music_controls import MusicControlsUI
-from ui_settings import SettingsUI
-from ui_common import *
+from ui.list_viewer import ListViewerUI
+from ui.playlist_viewer import PlaylistViewerUI
+from ui.music_controls import MusicControlsUI
+from ui.settings import SettingsUI
+from ui.common import *
 
 
 class MusicPlayerApp(mili.GenericApp):

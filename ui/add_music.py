@@ -1,9 +1,8 @@
 import mili
 import pygame
-import os
 import pathlib
 import tkinter.filedialog as filedialog
-from ui_common import *
+from ui.common import *
 
 
 class AddMusicUI(UIComponent):

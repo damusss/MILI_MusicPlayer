@@ -1,6 +1,6 @@
 import mili
 import pygame
-from ui_common import *
+from ui.common import *
 
 
 class MoveMusicUI(UIComponent):

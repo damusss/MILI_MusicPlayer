@@ -1,11 +1,11 @@
 import mili
 import pygame
 import pathlib
-from ui_add_music import AddMusicUI
-from ui_change_cover import ChangeCoverUI
-from ui_rename_music import RenameMusicUI
-from ui_move_music import MoveMusicUI
-from ui_common import *
+from ui.add_music import AddMusicUI
+from ui.change_cover import ChangeCoverUI
+from ui.rename_music import RenameMusicUI
+from ui.move_music import MoveMusicUI
+from ui.common import *
 
 
 class PlaylistViewerUI(UIComponent):

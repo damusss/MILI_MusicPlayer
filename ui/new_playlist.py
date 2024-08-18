@@ -3,7 +3,7 @@ import pygame
 import os
 import pathlib
 import tkinter.filedialog as filedialog
-from ui_common import *
+from ui.common import *
 
 
 class NewPlaylistUI(UIComponent):
@@ -122,7 +122,10 @@ class NewPlaylistUI(UIComponent):
             | mili.PADLESS,
         ):
             self.app.ui_image_btn(
-                self.upload_image, self.get_folder_from_dialog, self.anim_upload, br="30"
+                self.upload_image,
+                self.get_folder_from_dialog,
+                self.anim_upload,
+                br="30",
             )
             self.app.ui_image_btn(
                 self.confirm_image, self.create_from_folder, self.anim_create

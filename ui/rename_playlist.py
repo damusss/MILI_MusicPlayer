@@ -2,7 +2,7 @@ import mili
 import pygame
 import os
 import pathlib
-from ui_common import *
+from ui.common import *
 
 
 class RenamePlaylistUI(UIComponent):
