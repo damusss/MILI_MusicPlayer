@@ -1,0 +1,27 @@
+# Damus python gitignore
+
+.VSCodeCounter/
+__pycache__/
+test**.*
+temp.*
+stats.prof
+.ruff_cache/
+*.exe
+data/*
+!data/icons
+
+build/
+dist/
+lib/
+wheels/
+*.egg-info/
+*.egg
+*.spec
+
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
