@@ -13,7 +13,11 @@ class MusicPlayerApp(mili.GenericApp):
     def __init__(self):
         pygame.init()
         super().__init__(
-            pygame.Window("MILI Music Player", PREFERRED_SIZES, resizable=True)
+            pygame.Window(
+                "MILI Music Player",
+                (PREFERRED_SIZES[0] - 50, PREFERRED_SIZES[1]),
+                resizable=True,
+            )
         )
         self.window.minimum_size = (200, 300)
 
