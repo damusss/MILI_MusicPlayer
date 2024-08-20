@@ -14,9 +14,12 @@ class PlaylistViewerUI(UIComponent):
         self.anim_add_music = animation(-5)
         self.anim_cover = animation(-5)
         self.anim_back = animation(-3)
+        self.anim_search = animation(-5)
         self.menu_anims = [animation(-4) for i in range(3)]
         self.modal_state = "none"
         self.middle_selected = None
+        self.search_active = False
+        self.search_entryline = UIEntryline("Enter search...", False)
 
         self.add_music = AddMusicUI(self.app)
         self.change_cover = ChangeCoverUI(self.app)
@@ -34,12 +37,41 @@ class PlaylistViewerUI(UIComponent):
         self.change_cover_image = load_icon("cover")
         self.forward_image = load_icon("forward")
         self.delete_image = load_icon("delete")
+        self.search_image = load_icon("search")
+        self.searchoff_image = load_icon("searchoff")
+        self.backspace_image = load_icon("backspace")
+
+    def sort_searched_songs(self):
+        scores = {}
+        rawsearch = self.search_entryline.text.strip()
+        search = rawsearch.lower()
+        for i, path in enumerate(self.playlist.filepaths):
+            score = 0
+            rawname = str(self.playlist.filepaths_table[path].stem)
+            name = rawname.lower()
+            if rawsearch in rawname:
+                score += 100
+            if search in name:
+                score += 80
+            words = rawsearch.split(" ")
+            for rawword in words:
+                if rawword in rawname:
+                    score += 20
+                if rawword.strip() in name:
+                    score += 10
+            scores[path] = (score, i)
+        return [
+            (v[1][1], v[0])
+            for v in sorted(list(scores.items()), key=lambda x: x[1][0], reverse=True)
+        ]
 
     def enter(self, playlist):
         self.playlist = playlist
         self.app.change_state("playlist")
 
     def ui(self):
+        if self.search_active:
+            self.search_entryline.update()
         self.scrollbar.short_size = self.mult(8)
         if self.playlist is None:
             self.back()
@@ -59,6 +91,12 @@ class PlaylistViewerUI(UIComponent):
             self.app.ui_overlay_btn(
                 self.anim_cover, self.action_cover, self.change_cover_image, "supertop"
             )
+            self.app.ui_overlay_btn(
+                self.anim_search,
+                self.action_search,
+                self.searchoff_image if self.search_active else self.search_image,
+                "megatop",
+            )
         elif self.modal_state == "add":
             self.add_music.ui()
         elif self.modal_state == "move":
@@ -75,11 +113,15 @@ class PlaylistViewerUI(UIComponent):
         with self.mili.begin(
             (0, 0, self.app.window.size[0], 0), {"filly": True}, get_data=True
         ) as scroll_cont:
-            if len(self.playlist.filepaths) > 0:
+            if self.search_active:
+                paths = self.sort_searched_songs()
+            else:
+                paths = list(enumerate(self.playlist.filepaths))
+            if len(paths) > 0:
                 self.scroll.update(scroll_cont)
                 self.scrollbar.update(scroll_cont)
 
-                for i, path in enumerate(self.playlist.filepaths):
+                for i, path in paths:
                     self.ui_music(path, i)
 
                 if self.scrollbar.needed:
@@ -90,12 +132,16 @@ class PlaylistViewerUI(UIComponent):
                         if handle := self.mili.element(
                             self.scrollbar.handle_rect, self.scrollbar.handle_style
                         ):
-                            self.mili.rect({"color": (cond(handle, *SHANDLE_CV),) * 3})
+                            self.mili.rect(
+                                {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
+                            )
                             self.scrollbar.update_handle(handle)
 
             else:
                 self.mili.text_element(
-                    "No music",
+                    "No music matches your search"
+                    if self.search_active
+                    else "No music",
                     {"size": self.mult(20), "color": (200,) * 3},
                     None,
                     {"align": "center"},
@@ -103,26 +149,30 @@ class PlaylistViewerUI(UIComponent):
 
     def ui_title(self):
         ret = False
-        if self.playlist.cover is not None:
-            with self.mili.begin(
-                (0, 0, 0, 0),
-                {"resizex": True, "resizey": True, "align": "center", "axis": "x"},
-            ):
-                it = self.mili.image_element(
-                    self.playlist.cover,
-                    {"cache": self.cover_cache, "smoothscale": True},
-                    (0, 0, self.mult(80), self.mult(80)),
-                    {"align": "center"},
-                )
-                if (
-                    it.absolute_hover
-                    and self.modal_state == "none"
-                    and self.app.modal_state == "none"
+        with self.mili.begin(None, mili.RESIZE | mili.PADLESS | mili.CENTER):
+            if self.playlist.cover is not None:
+                with self.mili.begin(
+                    (0, 0, 0, 0),
+                    {"resizex": True, "resizey": True, "align": "center", "axis": "x"},
                 ):
-                    ret = True
+                    it = self.mili.image_element(
+                        self.playlist.cover,
+                        {"cache": self.cover_cache, "smoothscale": True},
+                        (0, 0, self.mult(80), self.mult(80)),
+                        {"align": "center"},
+                    )
+                    if (
+                        it.absolute_hover
+                        and self.modal_state == "none"
+                        and self.app.modal_state == "none"
+                        and self.app.can_interact()
+                    ):
+                        ret = True
+                    self.ui_title_txt()
+            else:
                 self.ui_title_txt()
-        else:
-            self.ui_title_txt()
+            if self.search_active:
+                self.ui_search()
         self.mili.line_element(
             [("-49.5", 0), ("49.5", 0)],
             {"size": 1, "color": (100,) * 3},
@@ -130,6 +180,34 @@ class PlaylistViewerUI(UIComponent):
             {"fillx": True},
         )
         return ret
+
+    def ui_search(self):
+        with self.mili.begin(
+            (0, 0, self.app.window.size[0] - self.mult(20), 0),
+            {"resizey": True} | mili.PADLESS | mili.X,
+        ):
+            size = self.mult(30)
+            self.search_entryline.ui(
+                self.mili,
+                (0, 0, 0, size),
+                {"fillx": True},
+                self.mult,
+                CONTROLS_CV[0] + 5,
+                CONTROLS_CV[1],
+            )
+            if it := self.mili.element((0, 0, size, size)):
+                self.mili.rect(
+                    {
+                        "color": (cond(self.app, it, *OVERLAY_CV),) * 3,
+                        "border_radius": 0,
+                    }
+                )
+                self.mili.image(
+                    self.backspace_image, {"cache": mili.ImageCache.get_next_cache()}
+                )
+                if it.left_just_released and self.app.can_interact():
+                    self.search_entryline.text = ""
+                    self.search_entryline.cursor = 0
 
     def ui_big_cover(self):
         self.mili.image_element(
@@ -163,6 +241,12 @@ class PlaylistViewerUI(UIComponent):
             None,
             {"align": "center"},
         )
+
+    def action_search(self):
+        if self.search_active:
+            self.stop_searching()
+        else:
+            self.search_active = True
 
     def action_cover(self):
         self.modal_state = "cover"
@@ -198,7 +282,7 @@ class PlaylistViewerUI(UIComponent):
                     "color": (
                         MUSIC_CV[1]
                         if self.app.music == path
-                        else cond(cont, *MUSIC_CV),
+                        else cond(self.app, cont, *MUSIC_CV),
                     )
                     * 3,
                     "border_radius": 0,
@@ -228,9 +312,12 @@ class PlaylistViewerUI(UIComponent):
                 (0, 0, self.app.window.size[0] / 1.1 - imagesize, self.mult(80) / 1.1),
                 {"align": "first", "blocking": False},
             )
-            if cont.left_just_released:
+            if cont.left_just_released and self.app.can_interact():
                 self.start_playing(path, idx)
-            if cont.just_released_button == pygame.BUTTON_RIGHT:
+            if (
+                cont.just_released_button == pygame.BUTTON_RIGHT
+                and self.app.can_interact()
+            ):
                 self.app.open_menu(
                     path,
                     (self.rename_image, self.action_rename, self.menu_anims[0]),
@@ -266,6 +353,8 @@ class PlaylistViewerUI(UIComponent):
             self.app.close_menu()
             return
         try:
+            if self.app.menu_data == self.app.music:
+                self.app.end_music()
             path = self.app.menu_data
             self.playlist.remove(path)
         except Exception:
@@ -274,6 +363,10 @@ class PlaylistViewerUI(UIComponent):
 
     def start_playing(self, path, idx):
         self.app.play_from_playlist(self.playlist, path, idx)
+
+    def stop_searching(self):
+        self.search_active = False
+        self.search_entryline.text = ""
 
     def event(self, event):
         modal_exit = False
@@ -285,6 +378,12 @@ class PlaylistViewerUI(UIComponent):
             modal_exit = self.change_cover.event(event)
         elif self.modal_state == "rename":
             modal_exit = self.rename_music.event(event)
+        if (
+            self.search_active
+            and self.app.can_interact()
+            and self.modal_state == "none"
+        ):
+            self.search_entryline.event(event)
         if event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_MIDDLE:
             self.middle_selected = None
         if (
@@ -308,4 +407,7 @@ class PlaylistViewerUI(UIComponent):
         if not modal_exit and (
             event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
         ):
-            self.back()
+            if self.search_active:
+                self.stop_searching()
+            else:
+                self.back()

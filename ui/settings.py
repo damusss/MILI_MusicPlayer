@@ -8,7 +8,7 @@ class SettingsUI(UIComponent):
     def init(self):
         self.anim_close = animation(-5)
         self.anim_handle = animation(-3)
-        self.anims = [animation(-3) for i in range(2)]
+        self.anims = [animation(-3) for i in range(3)]
         self.cache = mili.ImageCache()
         self.slider = mili.Slider(False, True, (10, 10))
 
@@ -17,6 +17,8 @@ class SettingsUI(UIComponent):
         self.vollow_image = load_icon("vollow")
         self.loopon_image = load_icon("loopon")
         self.loopoff_image = load_icon("loopoff")
+        self.shuffleon_image = load_icon("shuffleon")
+        self.shuffleoff_image = load_icon("shuffleoff")
 
     def ui(self):
         with self.mili.begin(
@@ -66,6 +68,9 @@ class SettingsUI(UIComponent):
             loop_image = self.loopoff_image
             if self.app.loops:
                 loop_image = self.loopon_image
+            shuffle_image = self.shuffleoff_image
+            if self.app.shuffle:
+                shuffle_image = self.shuffleon_image
             self.app.ui_image_btn(vol_image, self.action_mute, self.anims[0])
             self.app.ui_image_btn(
                 loop_image,
@@ -73,6 +78,15 @@ class SettingsUI(UIComponent):
                 self.anims[1],
                 br="50" if not self.app.loops else "5",
             )
+            self.app.ui_image_btn(
+                shuffle_image,
+                self.action_shuffle,
+                self.anims[2],
+                br="50" if not self.app.shuffle else "5",
+            )
+
+    def action_shuffle(self):
+        self.app.shuffle = not self.app.shuffle
 
     def ui_slider(self):
         self.slider.handle_size = self.mult(40), self.mult(40)
@@ -103,11 +117,15 @@ class SettingsUI(UIComponent):
                         self.mult(12 + self.anim_handle.value), "padx", "pady"
                     )
                 )
-                if handle.just_hovered:
+                if handle.just_hovered and self.app.can_interact():
                     self.anim_handle.goto_b()
                 if handle.just_unhovered and not handle.left_pressed:
                     self.anim_handle.goto_a()
-                if handle.left_just_released and not handle.hovered:
+                if (
+                    handle.left_just_released
+                    and self.app.can_interact()
+                    and not handle.hovered
+                ):
                     self.anim_handle.goto_a()
                 if handle.left_pressed:
                     self.change_volume()

@@ -1,17 +1,20 @@
 import mili
 import pygame
+import random
+from ui.miniplayer import MiniplayerUI
 from ui.common import *
 
 
 class MusicControlsUI(UIComponent):
     def init(self):
+        self.minip = MiniplayerUI(self.app)
         self.img_cache = mili.ImageCache()
         self.main_cont = None
         self.offset = 0
         self.offset_restart_time = pygame.time.get_ticks()
         self.cont_height = 0
         self.small_cont = True
-        self.anims = [animation(-3) for i in range(3)]
+        self.anims = [animation(-3) for i in range(5)]
         self.handle_anim = animation(-10)
         self.slider = mili.Slider(False, True, 30, False)
 
@@ -19,6 +22,10 @@ class MusicControlsUI(UIComponent):
         self.pause_image = load_icon("pause")
         self.skip_next_image = load_icon("skip_next")
         self.skip_previous_image = load_icon("skip_previous")
+        self.loopon_image = load_icon("loopon")
+        self.loopoff_image = load_icon("loopoff")
+        self.minip_image = load_icon("opennew")
+        self.maxip_image = pygame.transform.flip(self.minip_image, True, True)
 
     def ui(self):
         self.cont_height = 0
@@ -79,6 +86,8 @@ class MusicControlsUI(UIComponent):
                 {"ignore_grid": True, "parent_id": 0, "z": 9999},
             )
 
+        self.minip.run()
+
     def ui_time(self):
         pos = (
             self.app.music_play_offset
@@ -110,13 +119,13 @@ class MusicControlsUI(UIComponent):
         percentage = (pos) / self.app.music_duration
 
         if percentage > 1.01:
-            self.action_skip_next(True, True)
+            self.music_auto_finish()
             return
 
         sizeperc = totalw * percentage
         self.mili.line_element(
             [(-totalw / 2, 0), (totalw / 2, 0)],
-            {"color": (50,) * 3, "size": 3},
+            {"color": (50,) * 3, "size": self.mult(3)},
             pygame.Rect(0, 0, totalw, 2).move_to(
                 midbottom=(
                     self.app.window.size[0] / 2,
@@ -127,7 +136,7 @@ class MusicControlsUI(UIComponent):
         )
         self.mili.line_element(
             [(-totalw / 2, 0), (-totalw / 2 + sizeperc, 0)],
-            {"color": (255, 0, 0), "size": 3},
+            {"color": (255, 0, 0), "size": self.mult(3)},
             pygame.Rect(0, 0, totalw, 2).move_to(
                 midbottom=(
                     self.app.window.size[0] / 2,
@@ -147,7 +156,7 @@ class MusicControlsUI(UIComponent):
         percentage = (pos) / self.app.music_duration
 
         if percentage > 1.01:
-            self.action_skip_next(True, True)
+            self.music_auto_finish()
             return
 
         sizeperc = totalw * min(1, percentage)
@@ -184,7 +193,7 @@ class MusicControlsUI(UIComponent):
                     }
                 )
 
-                if handle.left_just_released:
+                if handle.left_just_released and self.app.can_interact():
                     pygame.mixer.music.set_pos(
                         self.slider.valuex * self.app.music_duration
                     )
@@ -195,7 +204,7 @@ class MusicControlsUI(UIComponent):
                     percentage = (pos) / self.app.music_duration
                 if not handle.left_pressed:
                     self.slider.valuex = percentage
-                if handle.just_hovered:
+                if handle.just_hovered and self.app.can_interact():
                     self.handle_anim.goto_b()
                 if handle.just_unhovered:
                     self.handle_anim.goto_a()
@@ -252,27 +261,55 @@ class MusicControlsUI(UIComponent):
             )
             if self.app.music_index < len(self.app.music_playlist.filepaths) - 1:
                 self.ui_control_btn(self.skip_next_image, self.action_skip_next, 40, 2)
+            self.ui_control_btn(
+                self.loopon_image if self.app.music_loops else self.loopoff_image,
+                self.action_loop,
+                40,
+                3,
+                True,
+            )
+            self.ui_control_btn(
+                self.minip_image if self.minip.window is None else self.maxip_image,
+                self.action_miniplayer,
+                40,
+                4,
+                True,
+            )
 
-    def ui_control_btn(self, image, action, size, animi):
+    def action_loop(self):
+        self.app.music_loops = not self.app.music_loops
+
+    def ui_control_btn(self, image, action, size, animi, special=False):
         anim = self.anims[animi]
         if it := self.mili.element(
             (0, 0, self.mult(size), self.mult(size)),
             {"align": "center", "clip_draw": False},
         ):
-            if it.hovered:
-                self.mili.rect(
-                    {"color": (cond(it, *CONTROLS_CV),) * 3, "border_radius": "50"}
+            if it.hovered and self.app.can_interact():
+                (self.mili.rect if special else self.mili.circle)(
+                    {
+                        "color": (cond(self.app, it, *CONTROLS_CV),) * 3,
+                        "border_radius": "20",
+                    }
                     | mili.style.same(anim.value, "padx", "pady")
                 )
             self.mili.image(
-                image, mili.style.same(self.mult(1) + anim.value, "padx", "pady")
+                image,
+                {"cache": mili.ImageCache.get_next_cache()}
+                | mili.style.same(self.mult(1) + anim.value, "padx", "pady"),
             )
-            if it.left_just_released:
+            if it.left_just_released and self.app.can_interact():
                 action()
-            if it.just_hovered:
+            if it.just_hovered and self.app.can_interact():
                 anim.goto_b()
             if it.just_unhovered:
                 anim.goto_a()
+
+    def action_miniplayer(self):
+        if self.minip.window is None:
+            self.minip.open()
+        else:
+            self.minip.close()
 
     def action_play(self):
         if self.app.music_paused:
@@ -309,6 +346,33 @@ class MusicControlsUI(UIComponent):
             self.app.music_playlist, self.app.music_playlist.filepaths[new_idx], new_idx
         )
 
+    def music_auto_finish(self):
+        if self.app.shuffle:
+            music_available = self.app.music_playlist.filepaths
+            music_available.remove(self.app.music)
+            new_music = random.choice(music_available)
+            self.app.play_from_playlist(
+                self.app.music_playlist,
+                new_music,
+                self.app.music_playlist.filepaths.index(new_music),
+            )
+            return
+        if self.app.music_loops:
+            self.app.play_from_playlist(
+                self.app.music_playlist, self.app.music, self.app.music_index
+            )
+            return
+        self.action_skip_next(True, True)
+
     def event(self, event):
         if event.type == MUSIC_ENDEVENT:
-            self.action_skip_next(True, True)
+            self.music_auto_finish()
+        if event.type == pygame.WINDOWFOCUSGAINED:
+            if event.window == self.minip.window:
+                self.minip.focused = True
+            else:
+                self.minip.focused = False
+        if event.type == pygame.WINDOWFOCUSLOST and event.window == self.minip.window:
+            self.minip.focused = False
+        if event.type == pygame.WINDOWCLOSE and event.window == self.minip.window:
+            self.minip.close()

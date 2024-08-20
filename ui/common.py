@@ -32,9 +32,13 @@ MUSICC_CV = 10
 CONTROLS_CV = 10, 30, 18
 MENU_CV = 6, 20
 LISTM_CV = 20, 25, 18
+MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
+MP_BG_FILL = (50, 50, 50, 120)
 
 
-def cond(it, normal, hover, press):
+def cond(app, it, normal, hover, press):
+    if not app.can_interact():
+        return normal
     if it.left_pressed:
         return press
     elif it.hovered:
@@ -205,7 +209,7 @@ class UIComponent:
 
 
 class UIEntryline:
-    def __init__(self, placeholder="Enter text..."):
+    def __init__(self, placeholder="Enter text...", target_files=True):
         self.text = ""
         self.cursor = 0
         self.placeholder = placeholder
@@ -214,6 +218,7 @@ class UIEntryline:
         self.action_start_time = pygame.time.get_ticks()
         self.action_data = None
         self.action_time = pygame.time.get_ticks()
+        self.target_files = target_files
 
     def add(self, char):
         left, right = self.text[: self.cursor], self.text[self.cursor :]
@@ -244,7 +249,18 @@ class UIEntryline:
 
     def event(self, event):
         if event.type == pygame.TEXTINPUT:
-            if event.text in ["<", ">", ":", '"', "/", "\\", "|", "?", "*", "."]:
+            if self.target_files and event.text in [
+                "<",
+                ">",
+                ":",
+                '"',
+                "/",
+                "\\",
+                "|",
+                "?",
+                "*",
+                ".",
+            ]:
                 return
             self.set_cursor_on()
             self.add(event.text)
@@ -304,12 +320,13 @@ class UIEntryline:
             (xpos, rect.y + rect.h / 2 + curs / 2),
         )
 
-    def ui(self, mili_: mili.MILI, rect, style, mult):
-        with mili_.begin(rect, style | {"axis": "x"}):
-            mili_.rect({"color": (20,) * 3, "border_radius": 0})
+    def ui(self, mili_: mili.MILI, rect, style, mult, bgcol=20, outlinecol=40):
+        with mili_.begin(rect, style | {"axis": "x"}, get_data=True) as data:
+            rect = data.rect
+            mili_.rect({"color": (bgcol,) * 3, "border_radius": 0})
             mili_.rect(
                 {
-                    "color": (40,) * 3,
+                    "color": (outlinecol,) * 3,
                     "outline": 1,
                     "border_radius": 0,
                     "draw_above": True,

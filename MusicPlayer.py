@@ -1,6 +1,7 @@
 import pygame
 import mili
 import pathlib
+from health_check import main as health_check
 from ui.list_viewer import ListViewerUI
 from ui.playlist_viewer import PlaylistViewerUI
 from ui.music_controls import MusicControlsUI
@@ -14,6 +15,7 @@ class MusicPlayerApp(mili.GenericApp):
         super().__init__(
             pygame.Window("MILI Music Player", PREFERRED_SIZES, resizable=True)
         )
+        self.window.minimum_size = (200, 300)
 
         self.start_style = mili.PADLESS
         self.target_framerate = 120
@@ -35,15 +37,35 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_duration = None
         self.music_play_time = 0
         self.music_play_offset = 0
+        self.music_loops = False
 
         self.volume = 1
         self.loops = True
+        self.shuffle = False
         self.vol_before_mute = 1
+        self.ui_mult = 1
+        self.focused = True
+
+        if not os.path.exists("data"):
+            pygame.display.message_box(
+                "Data folder not found",
+                "Data folder not found. The folder is required to load icons and to store user data. "
+                "If you moved the application, remember to move the data folder aswell. The application will now quit.",
+                "error",
+                None,
+                ("Understood",),
+            )
+            pygame.quit()
+            raise SystemExit
 
         try:
-            data = load_json("data/settings.json", {"volume": 1, "loops": True})
+            data = load_json(
+                "data/settings.json",
+                {"volume": 1, "loops": True, "shuffle": self.shuffle},
+            )
             self.volume = data["volume"]
             self.loops = data["loops"]
+            self.shuffle = data["shuffle"]
         except Exception:
             pass
 
@@ -83,6 +105,7 @@ class MusicPlayerApp(mili.GenericApp):
             },
             line={"color": (255,) * 3},
             circle={"antialias": True},
+            image={"smoothscale": True},
         )
         mili.ImageCache.preallocate_caches(1000)
         self.anim_quit = animation(-3)
@@ -92,10 +115,12 @@ class MusicPlayerApp(mili.GenericApp):
         self.menu_buttons = None
         self.menu_pos = None
 
+        health_check()
+
     def play_from_playlist(self, playlist: Playlist, path, idx):
         self.music = path
         self.music_ref = playlist.filepaths_table[path]
-        self.music_cover = playlist.music_covers.get(path, self.music_cover)
+        self.music_cover = playlist.music_covers.get(path, self.music_cover_image)
         self.music_controls.offset = 0
         self.music_controls.offset_restart_time = pygame.time.get_ticks()
         self.music_paused = False
@@ -116,6 +141,8 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_paused = False
         pygame.mixer.music.stop()
         pygame.mixer.music.unload()
+        if self.music_controls.minip.window is not None:
+            self.music_controls.minip.close()
 
     def on_quit(self):
         playlist_data = [
@@ -126,7 +153,10 @@ class MusicPlayerApp(mili.GenericApp):
             for p in self.playlists
         ]
         write_json("data/playlists.json", playlist_data)
-        write_json("data/settings.json", {"volume": self.volume, "loops": self.loops})
+        write_json(
+            "data/settings.json",
+            {"volume": self.volume, "loops": self.loops, "shuffle": self.shuffle},
+        )
         for playlist in self.playlists:
             if playlist.cover is not None:
                 if not os.path.exists(f"data/covers/{playlist.name}.png"):
@@ -201,30 +231,27 @@ class MusicPlayerApp(mili.GenericApp):
                 self.close_menu()
 
     def ui_overlay_btn(self, anim, on_action, line_points_or_image, side="bottom"):
-        size = self.mult(60)
-        offset = self.mult(10)
+        size = self.mult(55)
+        offset = self.mult(8)
         if it := self.mili.element(
             pygame.Rect(0, 0, size, size).move_to(
                 bottomright=(
-                    self.window.size[0] - offset,
+                    self.window.size[0] - offset * 1.2,
                     self.window.size[1]
                     - offset
                     - self.music_controls.cont_height
-                    - (
-                        0
-                        if side == "bottom"
-                        else (
-                            size + self.mult(5)
-                            if side == "top"
-                            else size * 2 + self.mult(10)
-                        )
-                    ),
+                    - {
+                        "bottom": 0,
+                        "top": size + self.mult(5),
+                        "supertop": size * 2 + offset,
+                        "megatop": size * 3 + offset * 1.5,
+                    }[side],
                 )
             ),
             {"ignore_grid": True, "clip_draw": False},
         ):
             self.mili.circle(
-                {"color": (cond(it, *OVERLAY_CV),) * 3, "border_radius": "50"}
+                {"color": (cond(self, it, *OVERLAY_CV),) * 3, "border_radius": "50"}
                 | mili.style.same(int(anim.value / 1.8), "padx", "pady")
             )
             if isinstance(line_points_or_image, pygame.Surface):
@@ -236,11 +263,11 @@ class MusicPlayerApp(mili.GenericApp):
             else:
                 self.mili.line(line_points_or_image[0], {"size": "5"})
                 self.mili.line(line_points_or_image[1], {"size": "5"})
-            if it.just_hovered:
+            if it.just_hovered and self.can_interact():
                 anim.goto_b()
             elif it.just_unhovered:
                 anim.goto_a()
-            if it.left_just_released:
+            if it.left_just_released and self.can_interact():
                 on_action()
                 anim.goto_a()
 
@@ -257,12 +284,16 @@ class MusicPlayerApp(mili.GenericApp):
             )
             if side == "left"
             else pygame.Rect(0, 0, size, size).move_to(
-                topright=(self.window.size[0] - offset, y / 2 - size / 2 + 5)
+                topright=(
+                    self.window.size[0]
+                    - (offset if side == "right" else offset * 2 + size),
+                    y / 2 - size / 2 + 5,
+                )
             ),
             {"ignore_grid": True, "clip_draw": False, "z": 9999},
         ):
             self.mili.rect(
-                {"color": (cond(it, *OVERLAY_CV),) * 3, "border_radius": 0}
+                {"color": (cond(self, it, *OVERLAY_CV),) * 3, "border_radius": 0}
                 | mili.style.same(int(anim.value), "padx", "pady")
             )
             if isinstance(line_points_or_image, pygame.Surface):
@@ -274,11 +305,11 @@ class MusicPlayerApp(mili.GenericApp):
             else:
                 self.mili.line(line_points_or_image[0], {"size": "5"})
                 self.mili.line(line_points_or_image[1], {"size": "5"})
-            if it.just_hovered:
+            if it.just_hovered and self.can_interact():
                 anim.goto_b()
             elif it.just_unhovered:
                 anim.goto_a()
-            if it.left_just_released:
+            if it.left_just_released and self.can_interact():
                 on_action()
                 anim.goto_a()
 
@@ -289,7 +320,8 @@ class MusicPlayerApp(mili.GenericApp):
         ):
             (self.mili.rect if br != "50" else self.mili.circle)(
                 {
-                    "color": (cond(it, MODAL_CV, MODALB_CV[1], MODALB_CV[2]),) * 3,
+                    "color": (cond(self, it, MODAL_CV, MODALB_CV[1], MODALB_CV[2]),)
+                    * 3,
                     "border_radius": br,
                 }
                 | mili.style.same(
@@ -301,9 +333,9 @@ class MusicPlayerApp(mili.GenericApp):
                 mili.style.same(self.mult(3) + anim.value, "padx", "pady")
                 | {"smoothscale": True},
             )
-            if it.left_just_released:
+            if it.left_just_released and self.can_interact():
                 action()
-            if it.just_hovered:
+            if it.just_hovered and self.can_interact():
                 anim.goto_b()
             if it.just_unhovered:
                 anim.goto_a()
@@ -326,7 +358,19 @@ class MusicPlayerApp(mili.GenericApp):
     def mult(self, size):
         return max(1, int(size * self.ui_mult))
 
+    def can_interact(self):
+        if self.music_controls.minip.window is None:
+            return True
+        return not self.music_controls.minip.focused and self.focused
+
     def event(self, event):
+        if event.type == pygame.WINDOWFOCUSGAINED and event.window == self.window:
+            self.focused = True
+        if event.type == pygame.WINDOWFOCUSLOST and event.window == self.window:
+            self.focused = False
+        self.music_controls.event(event)
+        if not self.can_interact():
+            return
         if self.modal_state == "settings":
             if self.settings.event(event):
                 return
@@ -334,7 +378,6 @@ class MusicPlayerApp(mili.GenericApp):
             self.list_viewer.event(event)
         elif self.view_state == "playlist":
             self.playlist_viewer.event(event)
-        self.music_controls.event(event)
 
 
 if __name__ == "__main__":

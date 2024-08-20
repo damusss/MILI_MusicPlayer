@@ -57,7 +57,7 @@ class MoveMusicUI(UIComponent):
                     (0, 0, 0, self.mult(60)),
                     {"fillx": True, "anchor": "first", "axis": "x"},
                 ) as it:
-                    self.mili.rect({"color": (cond(it, *LISTM_CV),) * 3})
+                    self.mili.rect({"color": (cond(self.app, it, *LISTM_CV),) * 3})
                     cover = self.app.playlist_cover
                     if playlist.cover is not None:
                         cover = playlist.cover
@@ -74,7 +74,7 @@ class MoveMusicUI(UIComponent):
                         None,
                         {"align": "center", "blocking": False},
                     )
-                    if it.left_just_released:
+                    if it.left_just_released and self.app.can_interact():
                         self.move(playlist)
 
     def move(self, playlist: Playlist):

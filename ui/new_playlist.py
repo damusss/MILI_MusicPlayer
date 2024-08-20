@@ -72,7 +72,7 @@ class NewPlaylistUI(UIComponent):
     def ui_section_btn(self, cont, ctype, txt):
         color = (255,) * 3 if self.create_type == ctype else (120,) * 3
         if self.mili.element(None, mili.CENTER | {"blocking": False}):
-            if cont.hovered:
+            if cont.hovered and self.app.can_interact():
                 self.mili.rect({"color": (MODALB_CV[0],) * 3, "border_radius": "10"})
             self.mili.text(
                 txt,
@@ -85,7 +85,7 @@ class NewPlaylistUI(UIComponent):
             (0, 0, 0, self.mult(20)),
             {"fillx": True, "blocking": False},
         )
-        if cont.left_just_released:
+        if cont.left_just_released and self.app.can_interact():
             self.create_type = ctype
 
     def ui_empty_playlist_modal(self):

@@ -51,7 +51,9 @@ class ListViewerUI(UIComponent):
                         if handle := self.mili.element(
                             self.scrollbar.handle_rect, self.scrollbar.handle_style
                         ):
-                            self.mili.rect({"color": (cond(handle, *SHANDLE_CV),) * 3})
+                            self.mili.rect(
+                                {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
+                            )
                             self.scrollbar.update_handle(handle)
 
             else:
@@ -94,7 +96,7 @@ class ListViewerUI(UIComponent):
                     "color": (
                         LIST_CV[1]
                         if self.app.menu_data == playlist
-                        else cond(cont, *LIST_CV),
+                        else cond(self.app, cont, *LIST_CV),
                     )
                     * 3,
                     "border_radius": 0,
@@ -132,9 +134,12 @@ class ListViewerUI(UIComponent):
                         "blocking": False,
                     },
                 )
-            if cont.left_just_released:
+            if cont.left_just_released and self.app.can_interact():
                 self.app.playlist_viewer.enter(playlist)
-            elif cont.just_released_button == pygame.BUTTON_RIGHT:
+            elif (
+                cont.just_released_button == pygame.BUTTON_RIGHT
+                and self.app.can_interact()
+            ):
                 self.app.open_menu(
                     playlist,
                     (self.rename_image, self.action_rename, self.menu_anims[0]),
