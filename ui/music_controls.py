@@ -17,6 +17,10 @@ class MusicControlsUI(UIComponent):
         self.anims = [animation(-3) for i in range(5)]
         self.handle_anim = animation(-10)
         self.slider = mili.Slider(False, True, 30, False)
+        self.bigcover_cache = mili.ImageCache()
+        self.black_cache = mili.ImageCache()
+        self.music_videoclip_cover = None
+        self.last_videoclip_cover = None
 
         self.play_image = load_icon("play")
         self.pause_image = load_icon("pause")
@@ -31,6 +35,7 @@ class MusicControlsUI(UIComponent):
         self.cont_height = 0
         if self.app.music is None:
             return
+        self.get_videoclip_cover()
 
         if self.app.music_paused:
             self.app.music_play_time += self.app.delta_time * 1000
@@ -40,6 +45,7 @@ class MusicControlsUI(UIComponent):
             or not self.main_cont.absolute_rect.collidepoint(pygame.mouse.get_pos())
         )
         contheight = self.mult(100 if self.small_cont else 116)
+        bigcover = False
 
         self.cont_height = contheight
         with self.mili.begin(
@@ -51,18 +57,23 @@ class MusicControlsUI(UIComponent):
         ) as self.main_cont:
             self.mili.rect({"color": (MUSICC_CV,) * 3})
             imgsize = 0
-            if self.app.music_cover is not None:
+            cover = self.app.music_cover
+            if self.music_videoclip_cover is not None:
+                cover = self.music_videoclip_cover
+            if cover is not None:
                 imgsize = self.mult(90)
-                self.mili.image_element(
-                    self.app.music_cover,
+                it = self.mili.image_element(
+                    cover,
                     {
                         "cache": self.img_cache,
                         "pady": self.mult(5),
                         "smoothscale": True,
                     },
                     (0, 0, imgsize, imgsize),
-                    {"align": "first", "blocking": False},
+                    {"align": "first", "blocking": True},
                 )
+                if it.absolute_hover and self.app.can_interact():
+                    bigcover = True
             else:
                 self.mili.element((0, 0, 0, 0))
             self.ui_controls_cont()
@@ -85,6 +96,9 @@ class MusicControlsUI(UIComponent):
                 ),
                 {"ignore_grid": True, "parent_id": 0, "z": 9999},
             )
+
+        if bigcover:
+            self.ui_big_cover()
 
         self.minip.run()
 
@@ -236,6 +250,52 @@ class MusicControlsUI(UIComponent):
                 {"align": "first", "offset": (-self.offset, 0)},
             )
             self.ui_controls()
+
+    def get_videoclip_cover(self):
+        self.music_videoclip_cover = None
+        if self.app.music_paused:
+            self.music_videoclip_cover = self.last_videoclip_cover
+            return
+        if self.app.music_videoclip is not None:
+            pos = (
+                self.app.music_play_offset
+                + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
+            )
+            frame = self.app.music_videoclip.get_frame(pos)
+            self.music_videoclip_cover = pygame.image.frombytes(
+                frame.tobytes(), self.app.music_videoclip.size, "RGB"
+            )
+            self.last_videoclip_cover = self.music_videoclip_cover
+
+    def ui_big_cover(self):
+        cover = self.app.music_cover
+        if self.music_videoclip_cover is not None:
+            cover = self.music_videoclip_cover
+        if cover is None or cover is self.app.music_cover_image:
+            return
+        self.mili.image_element(
+            SURF,
+            {"fill": True, "fill_color": (0, 0, 0, 200), "cache": self.black_cache},
+            ((0, 0), self.app.window.size),
+            {"ignore_grid": True, "parent_id": 0, "z": 99999, "blocking": False},
+        )
+        size = mili.percentage(80, min(self.app.window.size))
+        self.mili.image_element(
+            cover,
+            {"cache": self.bigcover_cache, "smoothscale": True},
+            pygame.Rect(0, 0, size, size).move_to(
+                center=(
+                    self.app.window.size[0] / 2,
+                    self.app.window.size[1] / 2,
+                )
+            ),
+            {
+                "ignore_grid": True,
+                "blocking": False,
+                "z": 999999,
+                "parent_id": self.mili.stack_id,
+            },
+        )
 
     def ui_controls(self):
         with self.mili.begin(

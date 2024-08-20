@@ -2,6 +2,7 @@ import pygame
 import mili
 import pathlib
 import sys
+import moviepy.editor as moviepy
 from health_check import main as health_check
 from ui.list_viewer import ListViewerUI
 from ui.playlist_viewer import PlaylistViewerUI
@@ -30,7 +31,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.window.minimum_size = (200, 300)
 
         self.start_style = mili.PADLESS
-        self.target_framerate = 120
+        self.target_framerate = 60
 
         self.playlist_viewer = PlaylistViewerUI(self)
         self.list_viewer = ListViewerUI(self)
@@ -50,6 +51,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_play_time = 0
         self.music_play_offset = 0
         self.music_loops = False
+        self.music_videoclip = None
 
         self.volume = 1
         self.loops = True
@@ -73,11 +75,12 @@ class MusicPlayerApp(mili.GenericApp):
         try:
             data = load_json(
                 "data/settings.json",
-                {"volume": 1, "loops": True, "shuffle": self.shuffle},
+                {"volume": 1, "loops": True, "shuffle": False, "fps": 60},
             )
             self.volume = data["volume"]
             self.loops = data["loops"]
             self.shuffle = data["shuffle"]
+            self.target_framerate = data["fps"]
         except Exception:
             pass
 
@@ -118,7 +121,7 @@ class MusicPlayerApp(mili.GenericApp):
             circle={"antialias": True},
             image={"smoothscale": True},
         )
-        mili.ImageCache.preallocate_caches(1000)
+        mili.ImageCache.preallocate_caches(2000)
         self.anim_quit = animation(-3)
         self.anim_settings = animation(-5)
         self.menu_open = False
@@ -173,6 +176,14 @@ class MusicPlayerApp(mili.GenericApp):
         if path not in playlist.musics_durations:
             playlist.cache_duration(path)
         self.music_duration = playlist.musics_durations[path]
+        self.music_controls.music_videoclip_cover = None
+        self.music_controls.last_videoclip_cover = None
+        self.music_videoclip = None
+        if self.music_ref.suffix == ".mp4":
+            try:
+                self.music_videoclip = moviepy.VideoFileClip(str(self.music_ref))
+            except Exception:
+                pass
         pygame.mixer.music.load(path)
         pygame.mixer.music.play(0)
         pygame.mixer.music.set_endevent(MUSIC_ENDEVENT)
@@ -197,7 +208,12 @@ class MusicPlayerApp(mili.GenericApp):
         write_json("data/playlists.json", playlist_data)
         write_json(
             "data/settings.json",
-            {"volume": self.volume, "loops": self.loops, "shuffle": self.shuffle},
+            {
+                "volume": self.volume,
+                "loops": self.loops,
+                "shuffle": self.shuffle,
+                "fps": self.target_framerate,
+            },
         )
         for playlist in self.playlists:
             if playlist.cover is not None:

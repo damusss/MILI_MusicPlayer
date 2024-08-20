@@ -118,6 +118,7 @@ class MiniplayerUI:
     def back_to_app(self):
         self.close()
         self.app.window.focus()
+        self.app.window.restore()
         try:
             self.app.window.flash(pygame.FLASH_BREIFLY)
         except Exception:
@@ -176,6 +177,8 @@ class MiniplayerUI:
         cover = self.app.music_cover_image
         if self.app.music_cover is not None:
             cover = self.app.music_cover
+        if self.app.music_controls.music_videoclip_cover:
+            cover = self.app.music_controls.music_videoclip_cover
         if cover is None:
             return
 

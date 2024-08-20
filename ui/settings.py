@@ -8,7 +8,7 @@ class SettingsUI(UIComponent):
     def init(self):
         self.anim_close = animation(-5)
         self.anim_handle = animation(-3)
-        self.anims = [animation(-3) for i in range(3)]
+        self.anims = [animation(-3) for i in range(4)]
         self.cache = mili.ImageCache()
         self.slider = mili.Slider(False, True, (10, 10))
 
@@ -19,6 +19,8 @@ class SettingsUI(UIComponent):
         self.loopoff_image = load_icon("loopoff")
         self.shuffleon_image = load_icon("shuffleon")
         self.shuffleoff_image = load_icon("shuffleoff")
+        self.fps30_image = load_icon("fps30")
+        self.fps60_image = load_icon("fps60")
 
     def ui(self):
         with self.mili.begin(
@@ -65,25 +67,33 @@ class SettingsUI(UIComponent):
                 vol_image = self.vol1_image
             elif self.app.volume > 0.05:
                 vol_image = self.vollow_image
-            loop_image = self.loopoff_image
-            if self.app.loops:
-                loop_image = self.loopon_image
-            shuffle_image = self.shuffleoff_image
-            if self.app.shuffle:
-                shuffle_image = self.shuffleon_image
             self.app.ui_image_btn(vol_image, self.action_mute, self.anims[0])
             self.app.ui_image_btn(
-                loop_image,
+                self.loopon_image if self.app.loops else self.loopoff_image,
                 self.action_loop,
                 self.anims[1],
                 br="50" if not self.app.loops else "5",
             )
             self.app.ui_image_btn(
-                shuffle_image,
+                self.shuffleon_image if self.app.shuffle else self.shuffleoff_image,
                 self.action_shuffle,
                 self.anims[2],
                 br="50" if not self.app.shuffle else "5",
             )
+            self.app.ui_image_btn(
+                self.fps60_image
+                if self.app.target_framerate == 60
+                else self.fps30_image,
+                self.action_fps,
+                self.anims[3],
+                br="5",
+            )
+
+    def action_fps(self):
+        if self.app.target_framerate == 60:
+            self.app.target_framerate = 30
+        else:
+            self.app.target_framerate = 60
 
     def action_shuffle(self):
         self.app.shuffle = not self.app.shuffle
