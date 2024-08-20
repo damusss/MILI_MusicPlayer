@@ -43,6 +43,13 @@ class ListViewerUI(UIComponent):
                 for playlist in self.app.playlists:
                     self.ui_playlist(playlist)
 
+                self.mili.text_element(
+                    f"{len(self.app.playlists)} playlists",
+                    {"size": self.mult(19), "color": (170,) * 3},
+                    None,
+                    {"offset": self.scroll.get_offset()},
+                )
+
                 if self.scrollbar.needed:
                     with self.mili.begin(
                         self.scrollbar.bar_rect, self.scrollbar.bar_style

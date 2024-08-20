@@ -1,6 +1,7 @@
 import pygame
 import mili
 import pathlib
+import sys
 from health_check import main as health_check
 from ui.list_viewer import ListViewerUI
 from ui.playlist_viewer import PlaylistViewerUI
@@ -9,12 +10,19 @@ from ui.settings import SettingsUI
 from ui.common import *
 
 
+if "win" in sys.platform or os.name == "nt":
+    import ctypes
+
+    myappid = "damusss.mili_musicplayer.1.0"
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+
 class MusicPlayerApp(mili.GenericApp):
     def __init__(self):
         pygame.init()
         super().__init__(
             pygame.Window(
-                "MILI Music Player",
+                "Music Player",
                 (PREFERRED_SIZES[0] - 50, PREFERRED_SIZES[1]),
                 resizable=True,
             )
@@ -84,13 +92,12 @@ class MusicPlayerApp(mili.GenericApp):
         screen.blit(txt, txt.get_rect(center=(screen.width / 2, screen.height / 2)))
         self.window.flip()
 
-        global ERROR_COVER
-        ERROR_COVER = None
         self.close_image = load_icon("close")
         self.playlistadd_image = load_icon("playlist_add")
         self.music_cover_image = load_icon("music")
         self.playlist_cover = load_icon("playlist")
         self.settings_image = load_icon("settings")
+        self.window.set_icon(self.playlist_cover)
 
         make_data_folders("mp3_from_mp4", "covers", "music_covers")
 
@@ -120,6 +127,37 @@ class MusicPlayerApp(mili.GenericApp):
         self.menu_pos = None
 
         health_check()
+        self.try_set_icon_mac()
+
+    def try_set_icon_mac(self):
+        if not (os.name == "posix" and sys.platform == "darwin"):
+            return
+        try:
+            from AppKit import NSApplication, NSImage
+            from Foundation import NSURL
+
+            app = NSApplication.sharedApplication()
+            icon_image = NSImage.alloc().initByReferencingFile_(
+                "data/icons/playlist.png"
+            )
+            app.setApplicationIconImage_(icon_image)
+
+        except ImportError:
+            if not os.path.exists("ignore-pyobjc-dep.txt"):
+                btn = pygame.display.message_box(
+                    "Could not set taskbar icon",
+                    "The module 'pyobjc' is required to set the taskbar icon on MacOS. Please make sure the module is "
+                    "installed the next time you run the application. Create a file named 'ignore-pyobjc-dep.txt' "
+                    "to suppress this warning.",
+                    "warn",
+                    None,
+                    ("Understood", "Create ignore file"),
+                )
+                if btn == 1:
+                    with open("ignore-pyobjc-dep.txt", "w") as file:
+                        file.write("")
+        except Exception:
+            pass
 
     def play_from_playlist(self, playlist: Playlist, path, idx):
         self.music = path

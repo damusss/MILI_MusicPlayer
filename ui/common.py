@@ -15,7 +15,6 @@ PREFERRED_SIZES = (500, 700)
 SURF = pygame.Surface((1, 1), pygame.SRCALPHA)
 FORMATS = ["mp4", "wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
 POS_SUPPORTED = ["mp4", "mp3", "ogg", "flac", "mod"]
-ERROR_COVER = None
 ANIMSPEED = 50
 ANIMEASE = mili.animation.EaseIn()
 MUSIC_ENDEVENT = pygame.event.custom_type()
@@ -133,7 +132,7 @@ class Playlist:
                         pygame.image.save(surface, cover_path)
                         self.music_covers[new_path] = surface
                     except Exception:
-                        surface = ERROR_COVER
+                        surface = None
                         pygame.image.save(surface, cover_path)
                         self.music_covers[new_path] = surface
                 else:

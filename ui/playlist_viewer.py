@@ -79,9 +79,10 @@ class PlaylistViewerUI(UIComponent):
         big_cover = self.ui_title()
         self.ui_container()
 
-        self.app.ui_overlay_top_btn(self.anim_back, self.back, self.back_image, "left")
-
         if self.modal_state == "none" and self.app.modal_state == "none":
+            self.app.ui_overlay_top_btn(
+                self.anim_back, self.back, self.back_image, "left"
+            )
             self.app.ui_overlay_btn(
                 self.anim_add_music,
                 self.action_add_music,
@@ -123,6 +124,13 @@ class PlaylistViewerUI(UIComponent):
 
                 for i, path in paths:
                     self.ui_music(path, i)
+
+                self.mili.text_element(
+                    f"{len(self.playlist.filepaths)} tracks",
+                    {"size": self.mult(19), "color": (170,) * 3},
+                    None,
+                    {"offset": self.scroll.get_offset()},
+                )
 
                 if self.scrollbar.needed:
                     with self.mili.begin(
@@ -291,6 +299,8 @@ class PlaylistViewerUI(UIComponent):
             opath: pathlib.Path = self.playlist.filepaths_table[path]
             imagesize = 0
             cover = self.playlist.music_covers.get(path, self.app.music_cover_image)
+            if cover is None:
+                cover = self.app.music_cover_image
             if cover is not None:
                 imagesize = self.mult(70)
                 self.mili.image_element(

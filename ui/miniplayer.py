@@ -54,6 +54,7 @@ class MiniplayerUI:
         self.window.always_on_top = True
         self.window.minimum_size = (100, 100)
         self.window.get_surface()
+        self.window.set_icon(self.app.music_cover_image)
         try:
             self.window.flash(pygame.FLASH_BRIEFLY)
         except Exception:
@@ -69,6 +70,7 @@ class MiniplayerUI:
         self.window.minimum_size = (100, 100)
         self.canresize = True
         self.window.get_surface()
+        self.window.set_icon(self.app.music_cover_image)
 
     def set_borderoff(self):
         self.window = pygame.Window(
@@ -82,6 +84,7 @@ class MiniplayerUI:
         self.window.minimum_size = (100, 100)
         self.canresize = False
         self.window.get_surface()
+        self.window.set_icon(self.app.music_cover_image)
 
     def toggle_border(self):
         if self.canresize:
