@@ -98,17 +98,36 @@ class ListViewerUI(UIComponent):
                 "align": "first" if self.app.ui_mult < 1.1 else "center",
             },
         ) as cont:
-            self.mili.rect(
-                {
-                    "color": (
-                        LIST_CV[1]
-                        if self.app.menu_data == playlist
-                        else cond(self.app, cont, *LIST_CV),
-                    )
-                    * 3,
-                    "border_radius": 0,
-                }
-            )
+            if self.app.bg_effect:
+                self.mili.image(
+                    SURF,
+                    {
+                        "fill": True,
+                        "fill_color": (
+                            *(
+                                LIST_CV[1]
+                                if self.app.menu_data == playlist
+                                else cond(self.app, cont, *LIST_CV),
+                            )
+                            * 3,
+                            ALPHA,
+                        ),
+                        "border_radius": 0,
+                        "cache": mili.ImageCache.get_next_cache(),
+                    },
+                )
+            else:
+                self.mili.rect(
+                    {
+                        "color": (
+                            LIST_CV[1]
+                            if self.app.menu_data == playlist
+                            else cond(self.app, cont, *LIST_CV),
+                        )
+                        * 3,
+                        "border_radius": 0,
+                    }
+                )
             imagesize = self.mult(70)
             cover = playlist.cover
             if cover is None:

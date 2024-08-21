@@ -2,6 +2,7 @@ import pygame
 import mili
 import pathlib
 import sys
+import faulthandler
 import moviepy.editor as moviepy
 from health_check import main as health_check
 from ui.list_viewer import ListViewerUI
@@ -9,6 +10,8 @@ from ui.playlist_viewer import PlaylistViewerUI
 from ui.music_controls import MusicControlsUI
 from ui.settings import SettingsUI
 from ui.common import *
+
+faulthandler.enable()
 
 
 if "win" in sys.platform or os.name == "nt":
@@ -59,6 +62,10 @@ class MusicPlayerApp(mili.GenericApp):
         self.vol_before_mute = 1
         self.ui_mult = 1
         self.focused = True
+        self.bg_effect_image = None
+        self.bg_black_image = None
+        self.bg_effect = False
+        self.make_bg_image()
 
         if not os.path.exists("data"):
             pygame.display.message_box(
@@ -187,6 +194,7 @@ class MusicPlayerApp(mili.GenericApp):
         pygame.mixer.music.load(path)
         pygame.mixer.music.play(0)
         pygame.mixer.music.set_endevent(MUSIC_ENDEVENT)
+        pygame.mixer.music.set_volume(self.volume)
 
     def end_music(self):
         self.music = None
@@ -196,6 +204,9 @@ class MusicPlayerApp(mili.GenericApp):
         pygame.mixer.music.unload()
         if self.music_controls.minip.window is not None:
             self.music_controls.minip.close()
+        if self.music_videoclip is not None:
+            self.music_videoclip.close()
+        self.music_videoclip = None
 
     def on_quit(self):
         playlist_data = [
@@ -230,6 +241,7 @@ class MusicPlayerApp(mili.GenericApp):
 
         mili.animation.update_all()
         self.mili.rect({"color": (BG_CV,) * 3, "border_radius": 0})
+        self.ui_bg_effect()
 
         if self.view_state == "list":
             self.list_viewer.ui()
@@ -259,6 +271,12 @@ class MusicPlayerApp(mili.GenericApp):
             self.close_image,  # ([("-20", "-20"), ("20", "20")], [("-20", "20"), ("20", "-20")]),
             "right",
         )
+
+    def ui_bg_effect(self):
+        if not self.bg_effect:
+            return
+        self.mili.image(self.bg_effect_image)
+        self.mili.image(self.bg_black_image)
 
     def open_settings(self):
         self.modal_state = "settings"
@@ -421,11 +439,22 @@ class MusicPlayerApp(mili.GenericApp):
             return True
         return not self.music_controls.minip.focused and self.focused
 
+    def make_bg_image(self):
+        self.bg_black_image = pygame.Surface(self.window.size, pygame.SRCALPHA)
+        self.bg_effect_image = pygame.Surface(self.window.size, pygame.SRCALPHA)
+        for i in range(self.bg_black_image.height):
+            alpha = pygame.math.lerp(0, 255, i / (self.bg_black_image.height / 1.5))
+            self.bg_black_image.fill(
+                (0, 0, 0, alpha), (0, i, self.bg_black_image.width, 1)
+            )
+
     def event(self, event):
         if event.type == pygame.WINDOWFOCUSGAINED and event.window == self.window:
             self.focused = True
         if event.type == pygame.WINDOWFOCUSLOST and event.window == self.window:
             self.focused = False
+        if event.type == pygame.WINDOWRESIZED and event.window == self.window:
+            self.make_bg_image()
         self.music_controls.event(event)
         if not self.can_interact():
             return

@@ -127,7 +127,7 @@ class MiniplayerUI:
     def ui(self):
         wm = self.window.size[0] / MINIP_PREFERRED_SIZES[0]
         hm = self.window.size[1] / MINIP_PREFERRED_SIZES[1]
-        self.ui_mult = max(0.8, (wm * 0.1 + hm * 1) / 1.1)
+        self.ui_mult = min(2, max(0.8, (wm * 0.1 + hm * 1) / 1.1))
 
         self.mili.rect({"color": (3,) * 3})
         self.mili.rect(

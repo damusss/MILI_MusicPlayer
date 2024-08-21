@@ -36,6 +36,7 @@ class MusicControlsUI(UIComponent):
         if self.app.music is None:
             return
         self.get_videoclip_cover()
+        self.get_bg_effect()
 
         if self.app.music_paused:
             self.app.music_play_time += self.app.delta_time * 1000
@@ -267,6 +268,18 @@ class MusicControlsUI(UIComponent):
             )
             self.last_videoclip_cover = self.music_videoclip_cover
 
+    def get_bg_effect(self):
+        self.app.bg_effect = False
+        image = self.app.music_cover
+        if self.music_videoclip_cover is not None:
+            image = self.music_videoclip_cover
+        if image is None:
+            return
+        color = pygame.Color(pygame.transform.average_color(image))
+        color.a = 40
+        self.app.bg_effect = True
+        self.app.bg_effect_image.fill(color)
+
     def ui_big_cover(self):
         cover = self.app.music_cover
         if self.music_videoclip_cover is not None:
@@ -279,7 +292,7 @@ class MusicControlsUI(UIComponent):
             ((0, 0), self.app.window.size),
             {"ignore_grid": True, "parent_id": 0, "z": 99999, "blocking": False},
         )
-        size = mili.percentage(80, min(self.app.window.size))
+        size = mili.percentage(85, min(self.app.window.size))
         self.mili.image_element(
             cover,
             {"cache": self.bigcover_cache, "smoothscale": True},
@@ -436,3 +449,46 @@ class MusicControlsUI(UIComponent):
             self.minip.focused = False
         if event.type == pygame.WINDOWCLOSE and event.window == self.minip.window:
             self.minip.close()
+        if event.type == pygame.KEYDOWN:
+            self.key_controls(event)
+
+    def key_controls(self, event):
+        if self.app.music is not None:
+            if event.key in [
+                pygame.K_KP_ENTER,
+                pygame.K_RETURN,
+                pygame.K_PAUSE,
+                1073742085,
+            ]:
+                self.action_play()
+            if event.key == pygame.K_SPACE and (
+                self.app.view_state != "playlist"
+                or not self.app.playlist_viewer.search_active
+            ):
+                self.action_play()
+            if (
+                event.mod & pygame.KMOD_META
+                and event.mod & pygame.KMOD_SHIFT
+                and event.mod & pygame.KMOD_CTRL
+            ):
+                self.action_play()
+            if event.scancode == pygame.KSCAN_PAUSE:
+                self.action_play()
+            if event.key in [
+                1073742082,
+                pygame.K_RIGHT,
+                pygame.K_KP_6,
+            ]:
+                self.action_skip_next(True, True)
+            if event.key in [1073742083, pygame.K_LEFT, pygame.K_KP_4]:
+                self.action_skip_previous()
+        if event.key in [pygame.K_UP, pygame.K_KP_8]:
+            self.app.volume += 0.05
+            if self.app.volume > 1:
+                self.app.volume = 1
+            pygame.mixer.music.set_volume(self.app.volume)
+        if event.key in [pygame.K_DOWN, pygame.K_KP_2]:
+            self.app.volume -= 0.05
+            if self.app.volume < 0:
+                self.app.volume = 0
+            pygame.mixer.music.set_volume(self.app.volume)

@@ -224,7 +224,7 @@ class PlaylistViewerUI(UIComponent):
             ((0, 0), self.app.window.size),
             {"ignore_grid": True, "parent_id": 0, "z": 99999, "blocking": False},
         )
-        size = mili.percentage(80, min(self.app.window.size))
+        size = mili.percentage(85, min(self.app.window.size))
         self.mili.image_element(
             self.playlist.cover,
             {"cache": self.bigcover_cache, "smoothscale": True},
@@ -285,17 +285,38 @@ class PlaylistViewerUI(UIComponent):
                 "anchor": "first",
             },
         ) as cont:
-            self.mili.rect(
-                {
-                    "color": (
-                        MUSIC_CV[1]
-                        if self.app.music == path
-                        else cond(self.app, cont, *MUSIC_CV),
-                    )
-                    * 3,
-                    "border_radius": 0,
-                }
-            )
+            if self.app.bg_effect:
+                self.mili.image(
+                    SURF,
+                    {
+                        "fill": True,
+                        "fill_color": (
+                            *(
+                                (
+                                    MUSIC_CV[1]
+                                    if self.app.music == path
+                                    else cond(self.app, cont, *MUSIC_CV),
+                                )
+                                * 3
+                            ),
+                            ALPHA,
+                        ),
+                        "border_radius": 0,
+                        "cache": mili.ImageCache.get_next_cache(),
+                    },
+                )
+            else:
+                self.mili.rect(
+                    {
+                        "color": (
+                            MUSIC_CV[1]
+                            if self.app.music == path
+                            else cond(self.app, cont, *MUSIC_CV),
+                        )
+                        * 3,
+                        "border_radius": 0,
+                    }
+                )
             opath: pathlib.Path = self.playlist.filepaths_table[path]
             imagesize = 0
             cover = self.playlist.music_covers.get(path, self.app.music_cover_image)

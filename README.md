@@ -4,6 +4,8 @@ A MILI UI demo featuring a rich music player.
 
 ## Features
 
+30/60 FPS
+
 ### Playlists
 
 - Rename
@@ -28,5 +30,7 @@ A MILI UI demo featuring a rich music player.
 - Music loop
 - Playlist loop
 - Playlist shuffle
+- MP4 Video Player
+- BG Effects
 
 ### Miniplayer

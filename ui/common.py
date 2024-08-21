@@ -12,7 +12,7 @@ if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
 PREFERRED_SIZES = (500, 700)
-SURF = pygame.Surface((1, 1), pygame.SRCALPHA)
+SURF = pygame.Surface((10, 10), pygame.SRCALPHA)
 FORMATS = ["mp4", "wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
 POS_SUPPORTED = ["mp4", "mp3", "ogg", "flac", "mod"]
 ANIMSPEED = 50
@@ -33,6 +33,7 @@ MENU_CV = 6, 20
 LISTM_CV = 20, 25, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
+ALPHA = 120
 
 
 def cond(app, it, normal, hover, press):
@@ -180,6 +181,7 @@ class Playlist:
             soundfile = moviepy.AudioFileClip(str(path))
             duration = soundfile.duration
             self.musics_durations[path] = duration
+            soundfile.close()
         except Exception:
             self.musics_durations[path] = None
 
