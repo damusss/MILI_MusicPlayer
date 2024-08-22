@@ -1,6 +1,7 @@
 import mili
 import pygame
 import typing
+import ctypes
 from ui.common import *
 
 if typing.TYPE_CHECKING:
@@ -24,6 +25,10 @@ class MiniplayerUI:
         self.anims = [animation(-5) for i in range(3)]
         self.controls_rect = pygame.Rect()
         self.bg_surf = pygame.Surface((1, 1), pygame.SRCALPHA)
+        self.hovered = False
+        self.pressed = False
+        self.click_event = False
+        self.focus_time = 0
 
         self.mili.default_styles(
             text={
@@ -113,6 +118,10 @@ class MiniplayerUI:
             )
 
     def can_interact(self):
+        if self.app.sdl2 is not None:
+            return self.window is not None and (
+                (not self.app.focused and self.hovered) or self.focused
+            )
         return self.focused and self.window is not None
 
     def back_to_app(self):
@@ -125,6 +134,8 @@ class MiniplayerUI:
             pass
 
     def ui(self):
+        self.get_hovered()
+
         wm = self.window.size[0] / MINIP_PREFERRED_SIZES[0]
         hm = self.window.size[1] / MINIP_PREFERRED_SIZES[1]
         self.ui_mult = min(2, max(0.8, (wm * 0.1 + hm * 1) / 1.1))
@@ -135,18 +146,40 @@ class MiniplayerUI:
         )
 
         self.ui_cover()
-        self.ui_controls()
+        if self.app.sdl2 is None or self.hovered:
+            self.ui_controls()
         self.ui_line()
 
-        self.ui_top_btn(self.back_image, "left", self.back_to_app)
-        if self.window is None:
+        if self.app.sdl2 is None or self.hovered:
+            self.ui_top_btn(self.back_image, "left", self.back_to_app)
+            if self.window is None:
+                return
+            self.ui_top_btn(
+                self.resize_image if not self.canresize else self.borderless_image,
+                "rightleft",
+                self.toggle_border,
+            )
+            self.ui_top_btn(self.app.close_image, "right", self.close)
+
+    def get_hovered(self):
+        if self.app.sdl2 is None:
+            self.hovered = False
             return
-        self.ui_top_btn(
-            self.resize_image if not self.canresize else self.borderless_image,
-            "rightleft",
-            self.toggle_border,
+        x = ctypes.c_int(0)
+        y = ctypes.c_int(0)
+        res = self.app.sdl2.mouse.SDL_GetGlobalMouseState(
+            ctypes.byref(x), ctypes.byref(y)
         )
-        self.ui_top_btn(self.app.close_image, "right", self.close)
+        self.hovered = pygame.Rect(self.window.position, self.window.size).collidepoint(
+            x.value, y.value
+        )
+        self.click_event = False
+        if res == 1 and self.hovered and not self.pressed:
+            self.pressed = True
+        if res != 1:
+            if self.pressed:
+                self.click_event = True
+            self.pressed = False
 
     def ui_line(self):
         totalw = self.window.size[0] - self.mult(8)
@@ -250,12 +283,18 @@ class MiniplayerUI:
                 {"cache": mili.ImageCache.get_next_cache()}
                 | mili.style.same(self.mult(1) + anim.value / 3, "padx", "pady"),
             )
-            if it.left_just_released and self.can_interact():
+            if (
+                (it.left_just_released and self.can_focus_click())
+                or (self.click_event and it.absolute_hover)
+            ) and self.can_interact():
                 action()
             if it.just_hovered and self.can_interact():
                 anim.goto_b()
             if it.just_unhovered and self.can_interact():
                 anim.goto_a()
+
+    def can_focus_click(self):
+        return self.focused and (pygame.time.get_ticks() - self.focus_time >= 100)
 
     def action_play(self):
         self.app.music_controls.action_play()
@@ -291,7 +330,10 @@ class MiniplayerUI:
                 },
             )
             self.mili.image(img, {"cache": mili.ImageCache.get_next_cache()})
-            if it.left_just_released and self.can_interact():
+            if (
+                (it.left_just_released and self.can_focus_click())
+                or (self.click_event and it.absolute_hover)
+            ) and self.can_interact():
                 action()
 
     def run(self):

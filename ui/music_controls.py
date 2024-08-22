@@ -408,6 +408,7 @@ class MusicControlsUI(UIComponent):
         self.app.play_from_playlist(
             self.app.music_playlist, self.app.music_playlist.filepaths[new_idx], new_idx
         )
+        self.app.playlist_viewer.scroll.scroll(0, self.app.mult(80) + 3)
 
     def action_skip_previous(self):
         if len(self.app.music_playlist.filepaths) <= 0:
@@ -421,13 +422,16 @@ class MusicControlsUI(UIComponent):
 
     def music_auto_finish(self):
         if self.app.shuffle:
-            music_available = self.app.music_playlist.filepaths
+            music_available = self.app.music_playlist.filepaths.copy()
             music_available.remove(self.app.music)
             new_music = random.choice(music_available)
             self.app.play_from_playlist(
                 self.app.music_playlist,
                 new_music,
                 self.app.music_playlist.filepaths.index(new_music),
+            )
+            self.app.playlist_viewer.scroll.set_scroll(
+                0, self.app.music_index * (self.app.mult(80) + 6)
             )
             return
         if self.app.music_loops:
@@ -443,6 +447,7 @@ class MusicControlsUI(UIComponent):
         if event.type == pygame.WINDOWFOCUSGAINED:
             if event.window == self.minip.window:
                 self.minip.focused = True
+                self.minip.focus_time = pygame.time.get_ticks()
             else:
                 self.minip.focused = False
         if event.type == pygame.WINDOWFOCUSLOST and event.window == self.minip.window:

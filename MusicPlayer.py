@@ -23,11 +23,12 @@ if "win" in sys.platform or os.name == "nt":
 
 class MusicPlayerApp(mili.GenericApp):
     def __init__(self):
+        pygame.mixer.pre_init(buffer=2048)
         pygame.init()
         super().__init__(
             pygame.Window(
                 "Music Player",
-                (PREFERRED_SIZES[0] - 50, PREFERRED_SIZES[1]),
+                (PREFERRED_SIZES[0], PREFERRED_SIZES[1]),
                 resizable=True,
             )
         )
@@ -107,15 +108,17 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_cover_image = load_icon("music")
         self.playlist_cover = load_icon("playlist")
         self.settings_image = load_icon("settings")
+        self.loading_image = load_icon("loading")
         self.window.set_icon(self.playlist_cover)
 
         make_data_folders("mp3_from_mp4", "covers", "music_covers")
-
         playlist_data = load_json("data/playlists.json", [])
+        write_json("data/playlists_backup.json", playlist_data)
+
         for pdata in playlist_data:
             name = pdata["name"]
             paths = [pathlib.Path(path) for path in pdata["paths"]]
-            self.playlists.append(Playlist(name, paths))
+            self.playlists.append(Playlist(name, paths, self.loading_image))
 
         self.mili.default_styles(
             text={
@@ -137,6 +140,16 @@ class MusicPlayerApp(mili.GenericApp):
         self.menu_pos = None
 
         health_check()
+        try:
+            import sdl2
+
+            self.sdl2 = sdl2
+        except (ModuleNotFoundError, ImportError):
+            self.sdl2 = None
+            print(
+                "\nWARNING: PySDL2 not installed. Miniplayer hover feature is disabled"
+            )
+
         self.try_set_icon_mac()
 
     def try_set_icon_mac(self):
@@ -234,8 +247,8 @@ class MusicPlayerApp(mili.GenericApp):
                     )
 
     def ui(self):
-        multx = self.window.size[0] / PREFERRED_SIZES[0]
-        multy = self.window.size[1] / PREFERRED_SIZES[1]
+        multx = self.window.size[0] / UI_SIZES[0]
+        multy = self.window.size[1] / UI_SIZES[1]
         self.ui_mult = max(0.3, (multx * 0.1 + multy * 1) / 1.1)
         self.start_style = mili.PADLESS | {"spacing": int(self.ui_mult * 3)}
 

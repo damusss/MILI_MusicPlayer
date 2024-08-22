@@ -7,11 +7,13 @@ import numpy
 import moviepy.editor as moviepy
 import typing
 import functools
+import threading
 
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
-PREFERRED_SIZES = (500, 700)
+PREFERRED_SIZES = (415, 700)
+UI_SIZES = (450, 700)
 SURF = pygame.Surface((10, 10), pygame.SRCALPHA)
 FORMATS = ["mp4", "wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
 POS_SUPPORTED = ["mp4", "mp3", "ogg", "flac", "mod"]
@@ -77,8 +79,16 @@ def animation(value):
     )
 
 
+def load_cover_async(path, key, storage):
+    storage[key] = pygame.image.load(path).convert()
+
+
+def load_main_cover_async(path, playlist):
+    playlist.cover = pygame.image.load(path).convert()
+
+
 class Playlist:
-    def __init__(self, name, filepaths: list[pathlib.Path] = None):
+    def __init__(self, name, filepaths: list[pathlib.Path] = None, loading=None):
         self.name = name
         self.filepaths = filepaths if filepaths else []
         self.music_covers = {}
@@ -87,16 +97,20 @@ class Playlist:
         self.musics_durations = {}
 
         if os.path.exists(f"data/covers/{self.name}.png"):
-            self.cover = pygame.image.load(
-                f"data/covers/{self.name}.png"
-            ).convert_alpha()
+            if loading is not None:
+                self.cover = loading
+            thread = threading.Thread(
+                target=load_main_cover_async,
+                args=(f"data/covers/{self.name}.png", self),
+            )
+            thread.start()
 
         new_paths: list[pathlib.Path] = []
         for path in self.filepaths:
-            self.load_music(path, new_paths)
+            self.load_music(path, new_paths, loading)
         self.filepaths = new_paths
 
-    def load_music(self, path, new_paths):
+    def load_music(self, path, new_paths, loading=None):
         if path in new_paths or path in self.filepaths_table.values():
             return
         cover_path = f"data/music_covers/{self.name}_{path.stem}.png"
@@ -117,7 +131,7 @@ class Playlist:
 
             if os.path.exists(new_path) and os.path.exists(cover_path):
                 new_paths.append(new_path)
-                self.music_covers[new_path] = pygame.image.load(cover_path).convert()
+                self.load_cover_async(new_path, cover_path, loading)
                 self.filepaths_table[new_path] = path
                 return
 
@@ -137,9 +151,7 @@ class Playlist:
                         pygame.image.save(surface, cover_path)
                         self.music_covers[new_path] = surface
                 else:
-                    self.music_covers[new_path] = pygame.image.load(
-                        cover_path
-                    ).convert()
+                    self.load_cover_async(new_path, cover_path, loading)
 
                 if os.path.exists(new_path):
                     new_paths.append(new_path)
@@ -172,9 +184,17 @@ class Playlist:
 
         else:
             if os.path.exists(cover_path):
-                self.music_covers[path] = pygame.image.load(cover_path).convert()
+                self.load_cover_async(path, cover_path, loading)
             new_paths.append(path)
             self.filepaths_table[path] = path
+
+    def load_cover_async(self, key, path, loading=None):
+        if loading is not None:
+            self.music_covers[key] = loading
+        thread = threading.Thread(
+            target=load_cover_async, args=(path, key, self.music_covers)
+        )
+        thread.start()
 
     def cache_duration(self, path):
         try:

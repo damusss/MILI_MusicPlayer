@@ -5,6 +5,7 @@ A MILI UI demo featuring a rich music player.
 ## Features
 
 30/60 FPS
+Async loading
 
 ### Playlists
 

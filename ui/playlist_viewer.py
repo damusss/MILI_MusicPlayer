@@ -122,16 +122,6 @@ class PlaylistViewerUI(UIComponent):
                 self.scroll.update(scroll_cont)
                 self.scrollbar.update(scroll_cont)
 
-                for i, path in paths:
-                    self.ui_music(path, i)
-
-                self.mili.text_element(
-                    f"{len(self.playlist.filepaths)} tracks",
-                    {"size": self.mult(19), "color": (170,) * 3},
-                    None,
-                    {"offset": self.scroll.get_offset()},
-                )
-
                 if self.scrollbar.needed:
                     with self.mili.begin(
                         self.scrollbar.bar_rect, self.scrollbar.bar_style
@@ -144,6 +134,23 @@ class PlaylistViewerUI(UIComponent):
                                 {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
                             )
                             self.scrollbar.update_handle(handle)
+
+                drawn_musics = 0
+                for i, path in paths:
+                    drawn_musics += 1
+                    if self.ui_music(path, i):
+                        break
+
+                if drawn_musics < len(paths):
+                    to_draw = len(paths) - drawn_musics
+                    self.mili.element((0, 0, 10, (self.mult(80) + 3) * to_draw))
+
+                self.mili.text_element(
+                    f"{len(self.playlist.filepaths)} tracks",
+                    {"size": self.mult(19), "color": (170,) * 3},
+                    None,
+                    {"offset": self.scroll.get_offset()},
+                )
 
             else:
                 self.mili.text_element(
@@ -274,6 +281,9 @@ class PlaylistViewerUI(UIComponent):
             self.add_music.close()
 
     def ui_music(self, path, idx):
+        predicted_pos = idx * (self.mult(80) + 3) + self.scroll.get_offset()[1]
+        if predicted_pos > self.app.window.size[1]:
+            return True
         with self.mili.begin(
             (0, 0, 0, self.mult(80)),
             {
@@ -357,6 +367,7 @@ class PlaylistViewerUI(UIComponent):
                 )
             elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
                 self.middle_selected = path
+        return False
 
     def action_rename(self):
         self.modal_state = "rename"
@@ -424,7 +435,10 @@ class PlaylistViewerUI(UIComponent):
         ):
             if self.middle_selected is not None:
                 idx = self.playlist.filepaths.index(self.middle_selected)
-                inc = -int(event.y)
+                mult = 1
+                if pygame.key.get_pressed()[pygame.K_LSHIFT]:
+                    mult = 5
+                inc = -int(event.y) * mult
                 new_idx = idx + inc
                 if new_idx < 0:
                     new_idx = 0
