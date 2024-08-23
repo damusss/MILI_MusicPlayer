@@ -35,7 +35,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.window.minimum_size = (200, 300)
 
         self.start_style = mili.PADLESS
-        self.target_framerate = 60
+        self.real_fps = 60
 
         self.playlist_viewer = PlaylistViewerUI(self)
         self.list_viewer = ListViewerUI(self)
@@ -88,9 +88,10 @@ class MusicPlayerApp(mili.GenericApp):
             self.volume = data["volume"]
             self.loops = data["loops"]
             self.shuffle = data["shuffle"]
-            self.target_framerate = data["fps"]
+            self.real_fps = data["fps"]
         except Exception:
             pass
+        self.target_framerate = self.real_fps
 
         screen = self.window.get_surface()
         screen.fill((BG_CV,) * 3)
@@ -132,6 +133,7 @@ class MusicPlayerApp(mili.GenericApp):
             image={"smoothscale": True},
         )
         mili.ImageCache.preallocate_caches(2000)
+        self.bg_cache = mili.ImageCache()
         self.anim_quit = animation(-3)
         self.anim_settings = animation(-5)
         self.menu_open = False
@@ -236,7 +238,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "volume": self.volume,
                 "loops": self.loops,
                 "shuffle": self.shuffle,
-                "fps": self.target_framerate,
+                "fps": self.real_fps,
             },
         )
         for playlist in self.playlists:
@@ -247,6 +249,21 @@ class MusicPlayerApp(mili.GenericApp):
                     )
 
     def ui(self):
+        self.target_framerate = self.real_fps
+        if (
+            not self.focused
+            and (
+                self.music_controls.music_videoclip_cover is None
+                or self.music_paused
+                or self.music is None
+            )
+            and (
+                not self.music_controls.minip.focused
+                or self.music_controls.minip.window is None
+            )
+        ):
+            self.target_framerate = 10
+
         multx = self.window.size[0] / UI_SIZES[0]
         multy = self.window.size[1] / UI_SIZES[1]
         self.ui_mult = max(0.3, (multx * 0.1 + multy * 1) / 1.1)
@@ -289,7 +306,7 @@ class MusicPlayerApp(mili.GenericApp):
         if not self.bg_effect:
             return
         self.mili.image(self.bg_effect_image)
-        self.mili.image(self.bg_black_image)
+        self.mili.image(self.bg_black_image, {"cache": self.bg_cache})
 
     def open_settings(self):
         self.modal_state = "settings"

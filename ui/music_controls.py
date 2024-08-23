@@ -59,7 +59,7 @@ class MusicControlsUI(UIComponent):
             self.mili.rect({"color": (MUSICC_CV,) * 3})
             imgsize = 0
             cover = self.app.music_cover
-            if self.music_videoclip_cover is not None:
+            if self.music_videoclip_cover is not None and self.app.focused:
                 cover = self.music_videoclip_cover
             if cover is not None:
                 imgsize = self.mult(90)
@@ -236,14 +236,17 @@ class MusicControlsUI(UIComponent):
             )
             size = self.mili.text_size(txt, txtstyle).x
             diff = size - cont.rect.w
-            if diff > 0:
-                if pygame.time.get_ticks() - self.offset_restart_time >= 2000:
-                    self.offset += self.app.delta_time * 35
-                if self.offset > diff * 1.45:
-                    self.offset = 0
-                    self.offset_restart_time = pygame.time.get_ticks()
-            else:
+            if not self.app.focused:
                 self.offset = 0
+            else:
+                if diff > 0:
+                    if pygame.time.get_ticks() - self.offset_restart_time >= 2000:
+                        self.offset += self.app.delta_time * 35
+                    if self.offset > diff * 1.45:
+                        self.offset = 0
+                        self.offset_restart_time = pygame.time.get_ticks()
+                else:
+                    self.offset = 0
             self.mili.text_element(
                 txt,
                 txtstyle,
@@ -254,6 +257,8 @@ class MusicControlsUI(UIComponent):
 
     def get_videoclip_cover(self):
         self.music_videoclip_cover = None
+        if not self.app.focused and self.minip.window is None:
+            return
         if self.app.music_paused:
             self.music_videoclip_cover = self.last_videoclip_cover
             return
@@ -270,10 +275,15 @@ class MusicControlsUI(UIComponent):
 
     def get_bg_effect(self):
         self.app.bg_effect = False
+        if not self.app.focused:
+            return
         image = self.app.music_cover
         if self.music_videoclip_cover is not None:
             image = self.music_videoclip_cover
         if image is None:
+            return
+        if self.app.music_paused:
+            self.app.bg_effect = True
             return
         color = pygame.Color(pygame.transform.average_color(image))
         color.a = 40
@@ -447,7 +457,6 @@ class MusicControlsUI(UIComponent):
         if event.type == pygame.WINDOWFOCUSGAINED:
             if event.window == self.minip.window:
                 self.minip.focused = True
-                self.minip.focus_time = pygame.time.get_ticks()
             else:
                 self.minip.focused = False
         if event.type == pygame.WINDOWFOCUSLOST and event.window == self.minip.window:

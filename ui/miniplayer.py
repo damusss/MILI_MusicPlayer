@@ -28,7 +28,6 @@ class MiniplayerUI:
         self.hovered = False
         self.pressed = False
         self.click_event = False
-        self.focus_time = 0
 
         self.mili.default_styles(
             text={
@@ -294,7 +293,7 @@ class MiniplayerUI:
                 anim.goto_a()
 
     def can_focus_click(self):
-        return self.focused and (pygame.time.get_ticks() - self.focus_time >= 100)
+        return self.app.sdl2 is None and self.focused
 
     def action_play(self):
         self.app.music_controls.action_play()

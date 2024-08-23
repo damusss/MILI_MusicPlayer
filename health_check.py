@@ -55,8 +55,6 @@ def main():
                 else:
                     print(f"Found unused playlist cover: '{path}'")
                 anyf1 = True
-    if not anyf1:
-        print("No unused playlist covers found")
 
     anyf2 = False
     if os.path.exists("data/music_covers"):
@@ -69,8 +67,6 @@ def main():
                 else:
                     print(f"Found unused music cover: '{path}'")
                 anyf2 = True
-    if not anyf2:
-        print("No unused music covers found")
 
     anyf3 = False
     if os.path.exists("data/mp3_from_mp4"):
@@ -83,8 +79,16 @@ def main():
                 else:
                     print(f"Found unused MP3 file: '{path}'")
                 anyf3 = True
-    if not anyf3:
-        print("No unused MP3 files found")
+
+    if not anyf1 and not anyf2 and not anyf3:
+        print("Health Check: 100%")
+    else:
+        if not anyf1:
+            print("No unused playlist covers found")
+        if not anyf2:
+            print("No unused music covers found")
+        if not anyf3:
+            print("No unused MP3 files found")
 
     if anyf1 or anyf2 or anyf3:
         if do_remove:

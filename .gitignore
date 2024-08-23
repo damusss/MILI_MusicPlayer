@@ -9,6 +9,7 @@ stats.prof
 *.exe
 data/*
 !data/icons
+!data/ytfont.ttf
 
 build/
 dist/
