@@ -81,17 +81,17 @@ class SettingsUI(UIComponent):
                 br="50" if not self.app.shuffle else "5",
             )
             self.app.ui_image_btn(
-                self.fps60_image if self.app.real_fps == 60 else self.fps30_image,
+                self.fps60_image if self.app.user_framerate == 60 else self.fps30_image,
                 self.action_fps,
                 self.anims[3],
                 br="5",
             )
 
     def action_fps(self):
-        if self.app.real_fps == 60:
-            self.app.real_fps = 30
+        if self.app.user_framerate == 60:
+            self.app.user_framerate = 30
         else:
-            self.app.real_fps = 60
+            self.app.user_framerate = 60
 
     def action_shuffle(self):
         self.app.shuffle = not self.app.shuffle

@@ -53,28 +53,7 @@ class AddMusicUI(UIComponent):
             with self.mili.begin(
                 None, {"resizex": True, "resizey": True, "align": "center"}
             ):
-                for i, path in enumerate(self.selected_files):
-                    self.mili.text_element(
-                        f"{path}",
-                        {
-                            "color": (255,) * 3,
-                            "size": self.mult(20),
-                        },
-                        None,
-                        {"align": "center"},
-                    )
-                    if i >= 5:
-                        if len(self.selected_files) - i - 1 > 0:
-                            self.mili.text_element(
-                                f"... and {len(self.selected_files)-i-1} more",
-                                {
-                                    "color": (255,) * 3,
-                                    "size": self.mult(20),
-                                },
-                                None,
-                                {"align": "center"},
-                            )
-                        break
+                self.ui_selected_paths()
         with self.mili.begin(
             None,
             {
@@ -86,11 +65,17 @@ class AddMusicUI(UIComponent):
             },
         ):
             self.app.ui_image_btn(
-                self.upload_image, self.get_music_from_dialog, self.anim_upload, br="30"
+                self.upload_image,
+                self.action_music_from_dialog,
+                self.anim_upload,
+                br="30",
             )
             self.app.ui_image_btn(
                 self.confirm_image, self.confirm_add, self.anim_create
             )
+        self.ui_warning()
+
+    def ui_warning(self):
         self.mili.text_element(
             "Adding might take some time if MP4 files are chosen",
             {
@@ -104,7 +89,31 @@ class AddMusicUI(UIComponent):
             {"fillx": True},
         )
 
-    def get_music_from_dialog(self):
+    def ui_selected_paths(self):
+        for i, path in enumerate(self.selected_files):
+            self.mili.text_element(
+                f"{path}",
+                {
+                    "color": (255,) * 3,
+                    "size": self.mult(20),
+                },
+                None,
+                {"align": "center"},
+            )
+            if i >= 5:
+                if len(self.selected_files) - i - 1 > 0:
+                    self.mili.text_element(
+                        f"... and {len(self.selected_files)-i-1} more",
+                        {
+                            "color": (255,) * 3,
+                            "size": self.mult(20),
+                        },
+                        None,
+                        {"align": "center"},
+                    )
+                break
+
+    def action_music_from_dialog(self):
         paths = filedialog.askopenfilenames()
         paths = [pathlib.Path(path) for path in paths]
         paths = [file for file in paths if (file).suffix[1:].lower() in FORMATS]

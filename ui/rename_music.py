@@ -52,7 +52,7 @@ class RenameMusicUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.app.ui_image_btn(self.confirm_image, self.confirm_rename, self.anim_create)
+        self.app.ui_image_btn(self.confirm_image, self.action_confirm, self.anim_create)
         self.mili.text_element(
             "Renaming will modify the file on disk. Do not include the file type.",
             {
@@ -66,7 +66,7 @@ class RenameMusicUI(UIComponent):
             {"fillx": True},
         )
 
-    def confirm_rename(self):
+    def action_confirm(self):
         new_name = self.entryline.text.strip()
         if not new_name or self.entryline.text[-1] == ".":
             pygame.display.message_box(

@@ -50,7 +50,7 @@ class RenamePlaylistUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.app.ui_image_btn(self.confirm_image, self.confirm_rename, self.anim_create)
+        self.app.ui_image_btn(self.confirm_image, self.action_confirm, self.anim_create)
         self.mili.text_element(
             "Renaming might take some time if MP4 files were present",
             {
@@ -64,7 +64,7 @@ class RenamePlaylistUI(UIComponent):
             {"fillx": True},
         )
 
-    def confirm_rename(self):
+    def action_confirm(self):
         if not self.entryline.text.strip() or self.entryline.text[-1] == ".":
             pygame.display.message_box(
                 "Invalid name",

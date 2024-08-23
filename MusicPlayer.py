@@ -33,9 +33,8 @@ class MusicPlayerApp(mili.GenericApp):
             )
         )
         self.window.minimum_size = (200, 300)
-
         self.start_style = mili.PADLESS
-        self.real_fps = 60
+        self.user_framerate = 60
 
         self.playlist_viewer = PlaylistViewerUI(self)
         self.list_viewer = ListViewerUI(self)
@@ -45,6 +44,24 @@ class MusicPlayerApp(mili.GenericApp):
         self.view_state = "list"
         self.modal_state = "none"
         self.playlists: list[Playlist] = []
+        self.volume = 1
+        self.loops = True
+        self.shuffle = False
+        self.vol_before_mute = 1
+        self.ui_mult = 1
+        self.focused = True
+        self.bg_effect_image = None
+        self.bg_black_image = None
+        self.bg_effect = False
+        self.make_bg_image()
+        self.bg_cache = mili.ImageCache()
+        self.anim_quit = animation(-3)
+        self.anim_settings = animation(-5)
+        self.menu_open = False
+        self.menu_data: Playlist | pathlib.Path = None
+        self.menu_buttons = None
+        self.menu_pos = None
+
         self.music: pathlib.Path = None
         self.music_ref: pathlib.Path = None
         self.music_cover: pygame.Surface = None
@@ -57,52 +74,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_loops = False
         self.music_videoclip = None
 
-        self.volume = 1
-        self.loops = True
-        self.shuffle = False
-        self.vol_before_mute = 1
-        self.ui_mult = 1
-        self.focused = True
-        self.bg_effect_image = None
-        self.bg_black_image = None
-        self.bg_effect = False
-        self.make_bg_image()
-
-        if not os.path.exists("data"):
-            pygame.display.message_box(
-                "Data folder not found",
-                "Data folder not found. The folder is required to load icons and to store user data. "
-                "If you moved the application, remember to move the data folder aswell. The application will now quit.",
-                "error",
-                None,
-                ("Understood",),
-            )
-            pygame.quit()
-            raise SystemExit
-
-        try:
-            data = load_json(
-                "data/settings.json",
-                {"volume": 1, "loops": True, "shuffle": False, "fps": 60},
-            )
-            self.volume = data["volume"]
-            self.loops = data["loops"]
-            self.shuffle = data["shuffle"]
-            self.real_fps = data["fps"]
-        except Exception:
-            pass
-        self.target_framerate = self.real_fps
-
-        screen = self.window.get_surface()
-        screen.fill((BG_CV,) * 3)
-        txt = pygame.font.Font("data/ytfont.ttf", 30).render(
-            "Loading music and covers...",
-            True,
-            "white",
-            wraplength=int(screen.width / 1.2),
-        )
-        screen.blit(txt, txt.get_rect(center=(screen.width / 2, screen.height / 2)))
-        self.window.flip()
+        self.init_data_folder_check()
+        self.init_load_settings()
+        self.init_loading_screen()
 
         self.close_image = load_icon("close")
         self.playlistadd_image = load_icon("playlist_add")
@@ -121,6 +95,24 @@ class MusicPlayerApp(mili.GenericApp):
             paths = [pathlib.Path(path) for path in pdata["paths"]]
             self.playlists.append(Playlist(name, paths, self.loading_image))
 
+        self.init_mili_settings()
+        self.init_sld2()
+        self.init_try_set_icon_mac()
+
+        health_check()
+
+    def init_sld2(self):
+        try:
+            import sdl2
+
+            self.sdl2 = sdl2
+        except (ModuleNotFoundError, ImportError):
+            self.sdl2 = None
+            print(
+                "\nWARNING: PySDL2 not installed. Miniplayer hover feature is disabled"
+            )
+
+    def init_mili_settings(self):
         self.mili.default_styles(
             text={
                 "sysfont": False,
@@ -133,28 +125,47 @@ class MusicPlayerApp(mili.GenericApp):
             image={"smoothscale": True},
         )
         mili.ImageCache.preallocate_caches(2000)
-        self.bg_cache = mili.ImageCache()
-        self.anim_quit = animation(-3)
-        self.anim_settings = animation(-5)
-        self.menu_open = False
-        self.menu_data: Playlist | pathlib.Path = None
-        self.menu_buttons = None
-        self.menu_pos = None
 
-        health_check()
+    def init_load_settings(self):
         try:
-            import sdl2
-
-            self.sdl2 = sdl2
-        except (ModuleNotFoundError, ImportError):
-            self.sdl2 = None
-            print(
-                "\nWARNING: PySDL2 not installed. Miniplayer hover feature is disabled"
+            data = load_json(
+                "data/settings.json",
+                {"volume": 1, "loops": True, "shuffle": False, "fps": 60},
             )
+            self.volume = data["volume"]
+            self.loops = data["loops"]
+            self.shuffle = data["shuffle"]
+            self.user_framerate = data["fps"]
+        except Exception:
+            pass
+        self.target_framerate = self.user_framerate
 
-        self.try_set_icon_mac()
+    def init_data_folder_check(self):
+        if not os.path.exists("data"):
+            pygame.display.message_box(
+                "Data folder not found",
+                "Data folder not found. The folder is required to load icons and to store user data. "
+                "If you moved the application, remember to move the data folder aswell. The application will now quit.",
+                "error",
+                None,
+                ("Understood",),
+            )
+            pygame.quit()
+            raise SystemExit
 
-    def try_set_icon_mac(self):
+    def init_loading_screen(self):
+        screen = self.window.get_surface()
+        screen.fill((BG_CV,) * 3)
+        txt = pygame.font.Font("data/ytfont.ttf", 30).render(
+            "Loading music and covers...",
+            True,
+            "white",
+            wraplength=int(screen.width / 1.2),
+        )
+        screen.blit(txt, txt.get_rect(center=(screen.width / 2, screen.height / 2)))
+        self.window.flip()
+
+    def init_try_set_icon_mac(self):
         if not (os.name == "posix" and sys.platform == "darwin"):
             return
         try:
@@ -238,7 +249,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "volume": self.volume,
                 "loops": self.loops,
                 "shuffle": self.shuffle,
-                "fps": self.real_fps,
+                "fps": self.user_framerate,
             },
         )
         for playlist in self.playlists:
@@ -249,7 +260,7 @@ class MusicPlayerApp(mili.GenericApp):
                     )
 
     def ui(self):
-        self.target_framerate = self.real_fps
+        self.target_framerate = self.user_framerate
         if (
             not self.focused
             and (
@@ -307,9 +318,6 @@ class MusicPlayerApp(mili.GenericApp):
             return
         self.mili.image(self.bg_effect_image)
         self.mili.image(self.bg_black_image, {"cache": self.bg_cache})
-
-    def open_settings(self):
-        self.modal_state = "settings"
 
     def ui_menu(self):
         with self.mili.begin(
@@ -445,6 +453,9 @@ class MusicPlayerApp(mili.GenericApp):
                 anim.goto_b()
             if it.just_unhovered:
                 anim.goto_a()
+
+    def open_settings(self):
+        self.modal_state = "settings"
 
     def change_state(self, state):
         self.view_state = state

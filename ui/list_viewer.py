@@ -50,18 +50,7 @@ class ListViewerUI(UIComponent):
                     {"offset": self.scroll.get_offset()},
                 )
 
-                if self.scrollbar.needed:
-                    with self.mili.begin(
-                        self.scrollbar.bar_rect, self.scrollbar.bar_style
-                    ):
-                        self.mili.rect({"color": (SBAR_CV,) * 3})
-                        if handle := self.mili.element(
-                            self.scrollbar.handle_rect, self.scrollbar.handle_style
-                        ):
-                            self.mili.rect(
-                                {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
-                            )
-                            self.scrollbar.update_handle(handle)
+                self.ui_scrollbar()
 
             else:
                 self.mili.text_element(
@@ -84,8 +73,17 @@ class ListViewerUI(UIComponent):
         elif self.modal_state == "rename_playlist":
             self.rename_playlist.ui()
 
-    def action_new(self):
-        self.modal_state = "new_playlist"
+    def ui_scrollbar(self):
+        if self.scrollbar.needed:
+            with self.mili.begin(self.scrollbar.bar_rect, self.scrollbar.bar_style):
+                self.mili.rect({"color": (SBAR_CV,) * 3})
+                if handle := self.mili.element(
+                    self.scrollbar.handle_rect, self.scrollbar.handle_style
+                ):
+                    self.mili.rect(
+                        {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
+                    )
+                    self.scrollbar.update_handle(handle)
 
     def ui_playlist(self, playlist: Playlist):
         with self.mili.begin(
@@ -98,36 +96,8 @@ class ListViewerUI(UIComponent):
                 "align": "first" if self.app.ui_mult < 1.1 else "center",
             },
         ) as cont:
-            if self.app.bg_effect:
-                self.mili.image(
-                    SURF,
-                    {
-                        "fill": True,
-                        "fill_color": (
-                            *(
-                                LIST_CV[1]
-                                if self.app.menu_data == playlist
-                                else cond(self.app, cont, *LIST_CV),
-                            )
-                            * 3,
-                            ALPHA,
-                        ),
-                        "border_radius": 0,
-                        "cache": mili.ImageCache.get_next_cache(),
-                    },
-                )
-            else:
-                self.mili.rect(
-                    {
-                        "color": (
-                            LIST_CV[1]
-                            if self.app.menu_data == playlist
-                            else cond(self.app, cont, *LIST_CV),
-                        )
-                        * 3,
-                        "border_radius": 0,
-                    }
-                )
+            self.ui_playlist_bg(playlist, cont)
+
             imagesize = self.mult(70)
             cover = playlist.cover
             if cover is None:
@@ -145,21 +115,8 @@ class ListViewerUI(UIComponent):
                 None,
                 {"align": "center", "blocking": False},
             )
-            if self.middle_selected is playlist:
-                self.mili.text_element(
-                    "Use the mouse wheel to move the playlist",
-                    {
-                        "size": self.mult(13),
-                        "color": (150,) * 3,
-                        "align": "left",
-                        "font_align": pygame.FONT_LEFT,
-                    },
-                    None,
-                    {
-                        "align": "center",
-                        "blocking": False,
-                    },
-                )
+            self.ui_playlist_helper(playlist)
+
             if cont.left_just_released and self.app.can_interact():
                 self.app.playlist_viewer.enter(playlist)
             elif (
@@ -173,6 +130,58 @@ class ListViewerUI(UIComponent):
                 )
             elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
                 self.middle_selected = playlist
+
+    def ui_playlist_helper(self, playlist):
+        if self.middle_selected is playlist:
+            self.mili.text_element(
+                "Use the mouse wheel to move the playlist",
+                {
+                    "size": self.mult(13),
+                    "color": (150,) * 3,
+                    "align": "left",
+                    "font_align": pygame.FONT_LEFT,
+                },
+                None,
+                {
+                    "align": "center",
+                    "blocking": False,
+                },
+            )
+
+    def ui_playlist_bg(self, playlist, cont):
+        if self.app.bg_effect:
+            self.mili.image(
+                SURF,
+                {
+                    "fill": True,
+                    "fill_color": (
+                        *(
+                            LIST_CV[1]
+                            if self.app.menu_data == playlist
+                            else cond(self.app, cont, *LIST_CV),
+                        )
+                        * 3,
+                        ALPHA,
+                    ),
+                    "border_radius": 0,
+                    "cache": mili.ImageCache.get_next_cache(),
+                },
+            )
+        else:
+            self.mili.rect(
+                {
+                    "color": (
+                        LIST_CV[1]
+                        if self.app.menu_data == playlist
+                        else cond(self.app, cont, *LIST_CV),
+                    )
+                    * 3,
+                    "border_radius": 0,
+                }
+            )
+
+    def action_new(self):
+        self.modal_state = "new_playlist"
 
     def action_rename(self):
         self.modal_state = "rename_playlist"

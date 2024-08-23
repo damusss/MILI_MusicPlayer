@@ -48,6 +48,30 @@ class ChangeCoverUI(UIComponent):
         self.mili.text_element(
             "Change Cover", {"size": self.mult(26)}, None, mili.CENTER
         )
+        self.ui_selected_image()
+        with self.mili.begin(
+            None,
+            {
+                "resizex": True,
+                "resizey": True,
+                "axis": "x",
+                "clip_draw": False,
+                "align": "center",
+            },
+        ):
+            self.app.ui_image_btn(self.reset_image, self.action_reset, self.anims[0])
+            self.app.ui_image_btn(
+                self.brush_image, self.action_generate_cover, self.anims[1]
+            )
+            self.app.ui_image_btn(
+                self.upload_image, self.action_file_from_dialog, self.anims[2], br="30"
+            )
+            self.app.ui_image_btn(
+                self.confirm_image, self.action_confirm, self.anims[3]
+            )
+        self.ui_info()
+
+    def ui_selected_image(self):
         if self.selected_image is not None:
             size = mili.percentage(50, self.app.window.size[0])
             self.mili.image_element(
@@ -69,24 +93,8 @@ class ChangeCoverUI(UIComponent):
                 None,
                 {"fillx": True},
             )
-        with self.mili.begin(
-            None,
-            {
-                "resizex": True,
-                "resizey": True,
-                "axis": "x",
-                "clip_draw": False,
-                "align": "center",
-            },
-        ):
-            self.app.ui_image_btn(self.reset_image, self.reset, self.anims[0])
-            self.app.ui_image_btn(self.brush_image, self.generate_cover, self.anims[1])
-            self.app.ui_image_btn(
-                self.upload_image, self.get_file_from_dialog, self.anims[2], br="30"
-            )
-            self.app.ui_image_btn(
-                self.confirm_image, self.action_confirm, self.anims[3]
-            )
+
+    def ui_info(self):
         self.mili.text_element(
             "Hold shift to generate up to 9 cells",
             {
@@ -121,13 +129,13 @@ class ChangeCoverUI(UIComponent):
             )
         self.close()
 
-    def reset(self):
+    def action_reset(self):
         self.message_type = "info"
         self.message = "No image selected"
         self.is_reset = True
         self.selected_image = self.app.playlist_cover
 
-    def generate_cover(self):
+    def action_generate_cover(self):
         self.message = "No image selected"
         self.message_type = "info"
         self.selected_image = None
@@ -143,86 +151,90 @@ class ChangeCoverUI(UIComponent):
                 playlist.filepaths[0], self.app.music_cover_image
             )
         elif len(playlist.filepaths) == 2:
-            first = playlist.music_covers.get(
-                playlist.filepaths[0], self.app.music_cover_image
-            )
-            second = playlist.music_covers.get(
-                playlist.filepaths[1], self.app.music_cover_image
-            )
-            size = first.get_width()
-            new_surf = pygame.Surface((size * 2, size * 2))
-            first = mili.fit_image(
-                pygame.Rect(0, 0, size, size), first, smoothscale=True
-            )
-            second = mili.fit_image(
-                pygame.Rect(0, 0, size, size), second, smoothscale=True
-            )
-            new_surf.blit(first, first.get_rect(center=(size / 2, size / 2)))
-            new_surf.blit(
-                first,
-                first.get_rect(center=(size + size / 2, size + size / 2)),
-            )
-            new_surf.blit(second, second.get_rect(center=(size + size / 2, size / 2)))
-            new_surf.blit(second, second.get_rect(center=(size / 2, size + size / 2)))
-            self.selected_image = new_surf
-
+            self.generate_cover_2(playlist)
         elif len(playlist.filepaths) < 9 or not shift:
-            covers = []
-            for idx in [0, 1, -2, -1]:
-                covers.append(
-                    playlist.music_covers.get(
-                        playlist.filepaths[idx], self.app.music_cover_image
-                    )
-                )
-            size = covers[0].get_width()
-            sz2 = size / 2
-            new_surf = pygame.Surface((size * 2, size * 2))
-            covers = [
-                mili.fit_image(pygame.Rect(0, 0, size, size), cover, smoothscale=True)
-                for cover in covers
-            ]
-            for i, pos in enumerate(
-                [
-                    (sz2, sz2),
-                    (size + sz2, sz2),
-                    (sz2, size + sz2),
-                    (size + sz2, size + sz2),
-                ]
-            ):
-                new_surf.blit(covers[i], covers[i].get_rect(center=pos))
-            self.selected_image = new_surf
+            self.generate_cover_4(playlist)
         elif shift:
-            covers = []
-            for idx in [0, 1, 2, 3, 4, -4, -3, -2, -1]:
-                covers.append(
-                    playlist.music_covers.get(
-                        playlist.filepaths[idx], self.app.music_cover_image
-                    )
-                )
-            size = covers[0].get_width()
-            sz2 = size / 2
-            new_surf = pygame.Surface((size * 3, size * 3))
-            covers = [
-                mili.fit_image(pygame.Rect(0, 0, size, size), cover, smoothscale=True)
-                for cover in covers
-            ]
-            for i, pos in enumerate(
-                [
-                    (sz2, sz2),
-                    (size + sz2, sz2),
-                    (size * 2 + sz2, sz2),
-                    (sz2, size + sz2),
-                    (size + sz2, size + sz2),
-                    (size * 2 + sz2, size + sz2),
-                    (sz2, size * 2 + sz2),
-                    (size + sz2, size * 2 + sz2),
-                    (size * 2 + sz2, size * 2 + sz2),
-                ]
-            ):
-                new_surf.blit(covers[i], covers[i].get_rect(center=pos))
-            self.selected_image = new_surf
+            self.generate_cover_9(playlist)
 
-    def get_file_from_dialog(self):
+    def generate_cover_9(self, playlist):
+        covers = []
+        for idx in [0, 1, 2, 3, 4, -4, -3, -2, -1]:
+            covers.append(
+                playlist.music_covers.get(
+                    playlist.filepaths[idx], self.app.music_cover_image
+                )
+            )
+        size = covers[0].get_width()
+        sz2 = size / 2
+        new_surf = pygame.Surface((size * 3, size * 3))
+        covers = [
+            mili.fit_image(pygame.Rect(0, 0, size, size), cover, smoothscale=True)
+            for cover in covers
+        ]
+        for i, pos in enumerate(
+            [
+                (sz2, sz2),
+                (size + sz2, sz2),
+                (size * 2 + sz2, sz2),
+                (sz2, size + sz2),
+                (size + sz2, size + sz2),
+                (size * 2 + sz2, size + sz2),
+                (sz2, size * 2 + sz2),
+                (size + sz2, size * 2 + sz2),
+                (size * 2 + sz2, size * 2 + sz2),
+            ]
+        ):
+            new_surf.blit(covers[i], covers[i].get_rect(center=pos))
+        self.selected_image = new_surf
+
+    def generate_cover_4(self, playlist):
+        covers = []
+        for idx in [0, 1, -2, -1]:
+            covers.append(
+                playlist.music_covers.get(
+                    playlist.filepaths[idx], self.app.music_cover_image
+                )
+            )
+        size = covers[0].get_width()
+        sz2 = size / 2
+        new_surf = pygame.Surface((size * 2, size * 2))
+        covers = [
+            mili.fit_image(pygame.Rect(0, 0, size, size), cover, smoothscale=True)
+            for cover in covers
+        ]
+        for i, pos in enumerate(
+            [
+                (sz2, sz2),
+                (size + sz2, sz2),
+                (sz2, size + sz2),
+                (size + sz2, size + sz2),
+            ]
+        ):
+            new_surf.blit(covers[i], covers[i].get_rect(center=pos))
+        self.selected_image = new_surf
+
+    def generate_cover_2(self, playlist):
+        first = playlist.music_covers.get(
+            playlist.filepaths[0], self.app.music_cover_image
+        )
+        second = playlist.music_covers.get(
+            playlist.filepaths[1], self.app.music_cover_image
+        )
+        size = first.get_width()
+        new_surf = pygame.Surface((size * 2, size * 2))
+        first = mili.fit_image(pygame.Rect(0, 0, size, size), first, smoothscale=True)
+        second = mili.fit_image(pygame.Rect(0, 0, size, size), second, smoothscale=True)
+        new_surf.blit(first, first.get_rect(center=(size / 2, size / 2)))
+        new_surf.blit(
+            first,
+            first.get_rect(center=(size + size / 2, size + size / 2)),
+        )
+        new_surf.blit(second, second.get_rect(center=(size + size / 2, size / 2)))
+        new_surf.blit(second, second.get_rect(center=(size / 2, size + size / 2)))
+        self.selected_image = new_surf
+
+    def action_file_from_dialog(self):
         path = filedialog.askopenfilename()
         self.message = "No image selected"
         self.message_type = "info"

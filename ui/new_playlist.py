@@ -98,7 +98,9 @@ class NewPlaylistUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.app.ui_image_btn(self.confirm_image, self.create_empty, self.anim_create)
+        self.app.ui_image_btn(
+            self.confirm_image, self.action_create_empty, self.anim_create
+        )
 
     def ui_folder_playlist_modal(self):
         self.mili.text_element(
@@ -123,12 +125,12 @@ class NewPlaylistUI(UIComponent):
         ):
             self.app.ui_image_btn(
                 self.upload_image,
-                self.get_folder_from_dialog,
+                self.action_folder_from_dialog,
                 self.anim_upload,
                 br="30",
             )
             self.app.ui_image_btn(
-                self.confirm_image, self.create_from_folder, self.anim_create
+                self.confirm_image, self.action_create_from_folder, self.anim_create
             )
         self.mili.text_element(
             "Creating might take some time if MP4 files are present",
@@ -143,12 +145,12 @@ class NewPlaylistUI(UIComponent):
             {"fillx": True},
         )
 
-    def get_folder_from_dialog(self):
+    def action_folder_from_dialog(self):
         result = filedialog.askdirectory(mustexist=True)
         if result:
             self.selected_folder = result
 
-    def create_empty(self):
+    def action_create_empty(self):
         if not self.entryline.text.strip() or self.entryline.text[-1] == ".":
             pygame.display.message_box(
                 "Invalid name",
@@ -164,7 +166,7 @@ class NewPlaylistUI(UIComponent):
         self.app.playlists.append(Playlist(name, []))
         self.close()
 
-    def create_from_folder(self):
+    def action_create_from_folder(self):
         if self.selected_folder is None:
             pygame.display.message_box(
                 "No folder selected",

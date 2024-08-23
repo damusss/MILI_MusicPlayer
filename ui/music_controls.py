@@ -57,28 +57,41 @@ class MusicControlsUI(UIComponent):
             get_data=True,
         ) as self.main_cont:
             self.mili.rect({"color": (MUSICC_CV,) * 3})
-            imgsize = 0
-            cover = self.app.music_cover
-            if self.music_videoclip_cover is not None and self.app.focused:
-                cover = self.music_videoclip_cover
-            if cover is not None:
-                imgsize = self.mult(90)
-                it = self.mili.image_element(
-                    cover,
-                    {
-                        "cache": self.img_cache,
-                        "pady": self.mult(5),
-                        "smoothscale": True,
-                    },
-                    (0, 0, imgsize, imgsize),
-                    {"align": "first", "blocking": True},
-                )
-                if it.absolute_hover and self.app.can_interact():
-                    bigcover = True
-            else:
-                self.mili.element((0, 0, 0, 0))
-            self.ui_controls_cont()
+            bigcover = self.ui_container()
 
+        self.ui_track_control()
+
+        if bigcover:
+            self.ui_big_cover()
+
+        self.minip.run()
+
+    def ui_container(self):
+        bigcover = False
+        imgsize = 0
+        cover = self.app.music_cover
+        if self.music_videoclip_cover is not None and self.app.focused:
+            cover = self.music_videoclip_cover
+        if cover is not None:
+            imgsize = self.mult(90)
+            it = self.mili.image_element(
+                cover,
+                {
+                    "cache": self.img_cache,
+                    "pady": self.mult(5),
+                    "smoothscale": True,
+                },
+                (0, 0, imgsize, imgsize),
+                {"align": "first", "blocking": True},
+            )
+            if it.absolute_hover and self.app.can_interact():
+                bigcover = True
+        else:
+            self.mili.element((0, 0, 0, 0))
+        self.ui_controls_cont()
+        return bigcover
+
+    def ui_track_control(self):
         if (
             self.app.music_ref.suffix[1:].lower() in POS_SUPPORTED
             or self.app.music_duration is None
@@ -97,11 +110,6 @@ class MusicControlsUI(UIComponent):
                 ),
                 {"ignore_grid": True, "parent_id": 0, "z": 9999},
             )
-
-        if bigcover:
-            self.ui_big_cover()
-
-        self.minip.run()
 
     def ui_time(self):
         pos = (
@@ -255,41 +263,6 @@ class MusicControlsUI(UIComponent):
             )
             self.ui_controls()
 
-    def get_videoclip_cover(self):
-        self.music_videoclip_cover = None
-        if not self.app.focused and self.minip.window is None:
-            return
-        if self.app.music_paused:
-            self.music_videoclip_cover = self.last_videoclip_cover
-            return
-        if self.app.music_videoclip is not None:
-            pos = (
-                self.app.music_play_offset
-                + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
-            )
-            frame = self.app.music_videoclip.get_frame(pos)
-            self.music_videoclip_cover = pygame.image.frombytes(
-                frame.tobytes(), self.app.music_videoclip.size, "RGB"
-            )
-            self.last_videoclip_cover = self.music_videoclip_cover
-
-    def get_bg_effect(self):
-        self.app.bg_effect = False
-        if not self.app.focused:
-            return
-        image = self.app.music_cover
-        if self.music_videoclip_cover is not None:
-            image = self.music_videoclip_cover
-        if image is None:
-            return
-        if self.app.music_paused:
-            self.app.bg_effect = True
-            return
-        color = pygame.Color(pygame.transform.average_color(image))
-        color.a = 40
-        self.app.bg_effect = True
-        self.app.bg_effect_image.fill(color)
-
     def ui_big_cover(self):
         cover = self.app.music_cover
         if self.music_videoclip_cover is not None:
@@ -359,9 +332,6 @@ class MusicControlsUI(UIComponent):
                 True,
             )
 
-    def action_loop(self):
-        self.app.music_loops = not self.app.music_loops
-
     def ui_control_btn(self, image, action, size, animi, special=False):
         anim = self.anims[animi]
         if it := self.mili.element(
@@ -387,6 +357,44 @@ class MusicControlsUI(UIComponent):
                 anim.goto_b()
             if it.just_unhovered:
                 anim.goto_a()
+
+    def get_videoclip_cover(self):
+        self.music_videoclip_cover = None
+        if not self.app.focused and self.minip.window is None:
+            return
+        if self.app.music_paused:
+            self.music_videoclip_cover = self.last_videoclip_cover
+            return
+        if self.app.music_videoclip is not None:
+            pos = (
+                self.app.music_play_offset
+                + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
+            )
+            frame = self.app.music_videoclip.get_frame(pos)
+            self.music_videoclip_cover = pygame.image.frombytes(
+                frame.tobytes(), self.app.music_videoclip.size, "RGB"
+            )
+            self.last_videoclip_cover = self.music_videoclip_cover
+
+    def get_bg_effect(self):
+        self.app.bg_effect = False
+        if not self.app.focused:
+            return
+        image = self.app.music_cover
+        if self.music_videoclip_cover is not None:
+            image = self.music_videoclip_cover
+        if image is None:
+            return
+        if self.app.music_paused:
+            self.app.bg_effect = True
+            return
+        color = pygame.Color(pygame.transform.average_color(image))
+        color.a = 40
+        self.app.bg_effect = True
+        self.app.bg_effect_image.fill(color)
+
+    def action_loop(self):
+        self.app.music_loops = not self.app.music_loops
 
     def action_miniplayer(self):
         if self.minip.window is None:

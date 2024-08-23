@@ -90,7 +90,7 @@ class MiniplayerUI:
         self.window.get_surface()
         self.window.set_icon(self.app.music_cover_image)
 
-    def toggle_border(self):
+    def action_toggle_border(self):
         if self.canresize:
             self.set_borderoff()
         else:
@@ -123,7 +123,7 @@ class MiniplayerUI:
             )
         return self.focused and self.window is not None
 
-    def back_to_app(self):
+    def action_back_to_app(self):
         self.close()
         self.app.window.focus()
         self.app.window.restore()
@@ -132,33 +132,17 @@ class MiniplayerUI:
         except Exception:
             pass
 
-    def ui(self):
-        self.get_hovered()
+    def can_focus_click(self):
+        return self.app.sdl2 is None and self.focused
 
-        wm = self.window.size[0] / MINIP_PREFERRED_SIZES[0]
-        hm = self.window.size[1] / MINIP_PREFERRED_SIZES[1]
-        self.ui_mult = min(2, max(0.8, (wm * 0.1 + hm * 1) / 1.1))
+    def action_play(self):
+        self.app.music_controls.action_play()
 
-        self.mili.rect({"color": (3,) * 3})
-        self.mili.rect(
-            {"color": (20,) * 3, "outline": 1, "border_radius": 0, "draw_above": True}
-        )
+    def action_next(self):
+        self.app.music_controls.action_skip_next()
 
-        self.ui_cover()
-        if self.app.sdl2 is None or self.hovered:
-            self.ui_controls()
-        self.ui_line()
-
-        if self.app.sdl2 is None or self.hovered:
-            self.ui_top_btn(self.back_image, "left", self.back_to_app)
-            if self.window is None:
-                return
-            self.ui_top_btn(
-                self.resize_image if not self.canresize else self.borderless_image,
-                "rightleft",
-                self.toggle_border,
-            )
-            self.ui_top_btn(self.app.close_image, "right", self.close)
+    def action_previous(self):
+        self.app.music_controls.action_skip_previous()
 
     def get_hovered(self):
         if self.app.sdl2 is None:
@@ -179,6 +163,34 @@ class MiniplayerUI:
             if self.pressed:
                 self.click_event = True
             self.pressed = False
+
+    def ui(self):
+        self.get_hovered()
+
+        wm = self.window.size[0] / MINIP_PREFERRED_SIZES[0]
+        hm = self.window.size[1] / MINIP_PREFERRED_SIZES[1]
+        self.ui_mult = min(2, max(0.8, (wm * 0.1 + hm * 1) / 1.1))
+
+        self.mili.rect({"color": (3,) * 3})
+        self.mili.rect(
+            {"color": (20,) * 3, "outline": 1, "border_radius": 0, "draw_above": True}
+        )
+
+        self.ui_cover()
+        if self.app.sdl2 is None or self.hovered:
+            self.ui_controls()
+        self.ui_line()
+
+        if self.app.sdl2 is None or self.hovered:
+            self.ui_top_btn(self.back_image, "left", self.action_back_to_app)
+            if self.window is None:
+                return
+            self.ui_top_btn(
+                self.resize_image if not self.canresize else self.borderless_image,
+                "rightleft",
+                self.action_toggle_border,
+            )
+            self.ui_top_btn(self.app.close_image, "right", self.close)
 
     def ui_line(self):
         totalw = self.window.size[0] - self.mult(8)
@@ -291,18 +303,6 @@ class MiniplayerUI:
                 anim.goto_b()
             if it.just_unhovered and self.can_interact():
                 anim.goto_a()
-
-    def can_focus_click(self):
-        return self.app.sdl2 is None and self.focused
-
-    def action_play(self):
-        self.app.music_controls.action_play()
-
-    def action_next(self):
-        self.app.music_controls.action_skip_next()
-
-    def action_previous(self):
-        self.app.music_controls.action_skip_previous()
 
     def ui_top_btn(self, img, side, action):
         size = self.mult(35)

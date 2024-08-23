@@ -122,18 +122,7 @@ class PlaylistViewerUI(UIComponent):
                 self.scroll.update(scroll_cont)
                 self.scrollbar.update(scroll_cont)
 
-                if self.scrollbar.needed:
-                    with self.mili.begin(
-                        self.scrollbar.bar_rect, self.scrollbar.bar_style
-                    ):
-                        self.mili.rect({"color": (SBAR_CV,) * 3})
-                        if handle := self.mili.element(
-                            self.scrollbar.handle_rect, self.scrollbar.handle_style
-                        ):
-                            self.mili.rect(
-                                {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
-                            )
-                            self.scrollbar.update_handle(handle)
+                self.ui_scrollbar()
 
                 drawn_musics = 0
                 for i, path in paths:
@@ -161,6 +150,18 @@ class PlaylistViewerUI(UIComponent):
                     None,
                     {"align": "center"},
                 )
+
+    def ui_scrollbar(self):
+        if self.scrollbar.needed:
+            with self.mili.begin(self.scrollbar.bar_rect, self.scrollbar.bar_style):
+                self.mili.rect({"color": (SBAR_CV,) * 3})
+                if handle := self.mili.element(
+                    self.scrollbar.handle_rect, self.scrollbar.handle_style
+                ):
+                    self.mili.rect(
+                        {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
+                    )
+                    self.scrollbar.update_handle(handle)
 
     def ui_title(self):
         ret = False
@@ -257,29 +258,6 @@ class PlaylistViewerUI(UIComponent):
             {"align": "center"},
         )
 
-    def action_search(self):
-        if self.search_active:
-            self.stop_searching()
-        else:
-            self.search_active = True
-
-    def action_cover(self):
-        self.modal_state = "cover"
-
-    def action_add_music(self):
-        self.modal_state = "add"
-
-    def back(self):
-        self.app.change_state("list")
-        self.scroll.set_scroll(0, 0)
-        self.scrollbar.scroll_moved()
-        if self.modal_state == "move":
-            self.move_music.close()
-        elif self.modal_state == "cover":
-            self.change_cover.close()
-        elif self.modal_state == "add":
-            self.add_music.close()
-
     def ui_music(self, path, idx):
         predicted_pos = idx * (self.mult(80) + 3) + self.scroll.get_offset()[1]
         if predicted_pos > self.app.window.size[1]:
@@ -295,38 +273,7 @@ class PlaylistViewerUI(UIComponent):
                 "anchor": "first",
             },
         ) as cont:
-            if self.app.bg_effect:
-                self.mili.image(
-                    SURF,
-                    {
-                        "fill": True,
-                        "fill_color": (
-                            *(
-                                (
-                                    MUSIC_CV[1]
-                                    if self.app.music == path
-                                    else cond(self.app, cont, *MUSIC_CV),
-                                )
-                                * 3
-                            ),
-                            ALPHA,
-                        ),
-                        "border_radius": 0,
-                        "cache": mili.ImageCache.get_next_cache(),
-                    },
-                )
-            else:
-                self.mili.rect(
-                    {
-                        "color": (
-                            MUSIC_CV[1]
-                            if self.app.music == path
-                            else cond(self.app, cont, *MUSIC_CV),
-                        )
-                        * 3,
-                        "border_radius": 0,
-                    }
-                )
+            self.ui_music_bg(path, cont)
             opath: pathlib.Path = self.playlist.filepaths_table[path]
             imagesize = 0
             cover = self.playlist.music_covers.get(path, self.app.music_cover_image)
@@ -354,7 +301,7 @@ class PlaylistViewerUI(UIComponent):
                 {"align": "first", "blocking": False},
             )
             if cont.left_just_released and self.app.can_interact():
-                self.start_playing(path, idx)
+                self.action_start_playing(path, idx)
             if (
                 cont.just_released_button == pygame.BUTTON_RIGHT
                 and self.app.can_interact()
@@ -368,6 +315,63 @@ class PlaylistViewerUI(UIComponent):
             elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
                 self.middle_selected = path
         return False
+
+    def ui_music_bg(self, path, cont):
+        if self.app.bg_effect:
+            self.mili.image(
+                SURF,
+                {
+                    "fill": True,
+                    "fill_color": (
+                        *(
+                            (
+                                MUSIC_CV[1]
+                                if self.app.music == path
+                                else cond(self.app, cont, *MUSIC_CV),
+                            )
+                            * 3
+                        ),
+                        ALPHA,
+                    ),
+                    "border_radius": 0,
+                    "cache": mili.ImageCache.get_next_cache(),
+                },
+            )
+        else:
+            self.mili.rect(
+                {
+                    "color": (
+                        MUSIC_CV[1]
+                        if self.app.music == path
+                        else cond(self.app, cont, *MUSIC_CV),
+                    )
+                    * 3,
+                    "border_radius": 0,
+                }
+            )
+
+    def action_search(self):
+        if self.search_active:
+            self.stop_searching()
+        else:
+            self.search_active = True
+
+    def action_cover(self):
+        self.modal_state = "cover"
+
+    def action_add_music(self):
+        self.modal_state = "add"
+
+    def back(self):
+        self.app.change_state("list")
+        self.scroll.set_scroll(0, 0)
+        self.scrollbar.scroll_moved()
+        if self.modal_state == "move":
+            self.move_music.close()
+        elif self.modal_state == "cover":
+            self.change_cover.close()
+        elif self.modal_state == "add":
+            self.add_music.close()
 
     def action_rename(self):
         self.modal_state = "rename"
@@ -403,7 +407,7 @@ class PlaylistViewerUI(UIComponent):
             pass
         self.app.close_menu()
 
-    def start_playing(self, path, idx):
+    def action_start_playing(self, path, idx):
         self.app.play_from_playlist(self.playlist, path, idx)
 
     def stop_searching(self):
