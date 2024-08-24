@@ -1,8 +1,8 @@
 import mili
 import pygame
 import pathlib
-import tkinter.filedialog as filedialog
 from ui.common import *
+import tkinter.filedialog as filedialog
 
 
 class AddMusicUI(UIComponent):
@@ -96,11 +96,14 @@ class AddMusicUI(UIComponent):
                 {
                     "color": (255,) * 3,
                     "size": self.mult(20),
+                    "growx": False,
+                    "wraplen": "100",
+                    "slow_grow": True,
                 },
-                None,
+                (0, 0, mili.percentage(70, self.app.window.size[0]), 0),
                 {"align": "center"},
             )
-            if i >= 5:
+            if i >= 3:
                 if len(self.selected_files) - i - 1 > 0:
                     self.mili.text_element(
                         f"... and {len(self.selected_files)-i-1} more",

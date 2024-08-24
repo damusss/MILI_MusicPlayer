@@ -1,15 +1,15 @@
-import pygame
-import mili
-import pathlib
 import sys
+import mili
+import pygame
+import pathlib
 import faulthandler
-import moviepy.editor as moviepy
-from health_check import main as health_check
-from ui.list_viewer import ListViewerUI
-from ui.playlist_viewer import PlaylistViewerUI
-from ui.music_controls import MusicControlsUI
-from ui.settings import SettingsUI
 from ui.common import *
+import moviepy.editor as moviepy
+from ui.settings import SettingsUI
+from ui.list_viewer import ListViewerUI
+from health_check import main as health_check
+from ui.music_controls import MusicControlsUI
+from ui.playlist_viewer import PlaylistViewerUI
 
 faulthandler.enable()
 

@@ -1,9 +1,9 @@
+import os
 import mili
 import pygame
-import os
 import pathlib
-import tkinter.filedialog as filedialog
 from ui.common import *
+import tkinter.filedialog as filedialog
 
 
 class NewPlaylistUI(UIComponent):

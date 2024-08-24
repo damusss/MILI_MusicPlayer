@@ -1,8 +1,8 @@
 import mili
 import pygame
 import random
-from ui.miniplayer import MiniplayerUI
 from ui.common import *
+from ui.miniplayer import MiniplayerUI
 
 
 class MusicControlsUI(UIComponent):
@@ -427,6 +427,7 @@ class MusicControlsUI(UIComponent):
             self.app.music_playlist, self.app.music_playlist.filepaths[new_idx], new_idx
         )
         self.app.playlist_viewer.scroll.scroll(0, self.app.mult(80) + 3)
+        self.app.playlist_viewer.scrollbar.scroll_moved()
 
     def action_skip_previous(self):
         if len(self.app.music_playlist.filepaths) <= 0:
@@ -439,6 +440,11 @@ class MusicControlsUI(UIComponent):
         )
 
     def music_auto_finish(self):
+        if self.app.music_loops:
+            self.app.play_from_playlist(
+                self.app.music_playlist, self.app.music, self.app.music_index
+            )
+            return
         if self.app.shuffle:
             music_available = self.app.music_playlist.filepaths.copy()
             music_available.remove(self.app.music)
@@ -451,16 +457,14 @@ class MusicControlsUI(UIComponent):
             self.app.playlist_viewer.scroll.set_scroll(
                 0, self.app.music_index * (self.app.mult(80) + 6)
             )
-            return
-        if self.app.music_loops:
-            self.app.play_from_playlist(
-                self.app.music_playlist, self.app.music, self.app.music_index
-            )
+            self.app.playlist_viewer.scrollbar.scroll_moved()
             return
         self.action_skip_next(True, True)
 
     def event(self, event):
         if event.type == MUSIC_ENDEVENT:
+            if self.app.music is None:
+                return
             self.music_auto_finish()
         if event.type == pygame.WINDOWFOCUSGAINED:
             if event.window == self.minip.window:

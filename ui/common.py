@@ -1,13 +1,13 @@
-import pygame
-import mili
 import os
-import pathlib
+import mili
 import json
 import numpy
-import moviepy.editor as moviepy
+import pygame
 import typing
+import pathlib
 import functools
 import threading
+import moviepy.editor as moviepy
 
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp

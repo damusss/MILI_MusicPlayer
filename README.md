@@ -3,6 +3,14 @@
 A MILI UI demo featuring a rich music player.<br>
 [MILI Github](https://github.com/damusss/mili), [MILI PyPI](https://pypi.org/project/mili-ui/)
 
+## Supported Formats
+
+**Audio and Video**: MP4
+
+**Audio Only**: WAV, MP3, OGG, FLAC, OPUS, WV, MOD, AIFF
+
+**Unsupported Track Positioning**: WAV, OPUS, WV, AIFF
+
 ## Features
 
 30/60 FPS

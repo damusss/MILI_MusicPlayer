@@ -2,8 +2,8 @@ import mili
 import pygame
 import pathlib
 import mili._core
-import tkinter.filedialog as filedialog
 from ui.common import *
+import tkinter.filedialog as filedialog
 
 
 class ChangeCoverUI(UIComponent):

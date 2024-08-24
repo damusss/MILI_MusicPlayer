@@ -1,11 +1,11 @@
 import mili
 import pygame
 import pathlib
+from ui.common import *
 from ui.add_music import AddMusicUI
+from ui.move_music import MoveMusicUI
 from ui.change_cover import ChangeCoverUI
 from ui.rename_music import RenameMusicUI
-from ui.move_music import MoveMusicUI
-from ui.common import *
 
 
 class PlaylistViewerUI(UIComponent):
@@ -125,9 +125,9 @@ class PlaylistViewerUI(UIComponent):
                 self.ui_scrollbar()
 
                 drawn_musics = 0
-                for i, path in paths:
+                for posi, (musici, path) in enumerate(paths):
                     drawn_musics += 1
-                    if self.ui_music(path, i):
+                    if self.ui_music(path, musici, posi):
                         break
 
                 if drawn_musics < len(paths):
@@ -258,8 +258,8 @@ class PlaylistViewerUI(UIComponent):
             {"align": "center"},
         )
 
-    def ui_music(self, path, idx):
-        predicted_pos = idx * (self.mult(80) + 3) + self.scroll.get_offset()[1]
+    def ui_music(self, path, idx, posi):
+        predicted_pos = posi * (self.mult(80) + 3) + self.scroll.get_offset()[1]
         if predicted_pos > self.app.window.size[1]:
             return True
         with self.mili.begin(

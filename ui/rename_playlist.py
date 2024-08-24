@@ -1,6 +1,6 @@
+import os
 import mili
 import pygame
-import os
 import pathlib
 from ui.common import *
 
