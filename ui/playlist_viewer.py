@@ -57,8 +57,10 @@ class PlaylistViewerUI(UIComponent):
             for rawword in words:
                 if rawword in rawname:
                     score += 20
-                if rawword.strip() in name:
+                if rawword.lower() in name:
                     score += 10
+                if rawword.lower() in name.replace(" ", ""):
+                    score += 5
             scores[path] = (score, i)
         return [
             (v[1][1], v[0])

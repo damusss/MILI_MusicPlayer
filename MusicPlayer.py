@@ -10,6 +10,7 @@ from ui.list_viewer import ListViewerUI
 from health_check import main as health_check
 from ui.music_controls import MusicControlsUI
 from ui.playlist_viewer import PlaylistViewerUI
+import pygame._sdl2
 
 faulthandler.enable()
 
@@ -23,8 +24,10 @@ if "win" in sys.platform or os.name == "nt":
 
 class MusicPlayerApp(mili.GenericApp):
     def __init__(self):
+        print(pygame._sdl2.audio.get_audio_device_names())
         pygame.mixer.pre_init(buffer=2048)
-        pygame.init()
+        pygame.mixer.init(buffer=2048)
+        pygame.font.init()
         super().__init__(
             pygame.Window(
                 "Music Player",
