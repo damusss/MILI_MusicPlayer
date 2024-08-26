@@ -19,7 +19,13 @@ class MoveMusicUI(UIComponent):
             )
 
             with self.mili.begin(
-                (0, 0, 0, 0), {"fillx": "80", "filly": "65", "align": "center"}
+                (0, 0, 0, 0),
+                {
+                    "fillx": "80",
+                    "filly": "65",
+                    "align": "center",
+                    "offset": (0, -self.app.tbarh),
+                },
             ):
                 self.mili.rect({"color": (MODAL_CV,) * 3, "border_radius": "5"})
 
@@ -42,7 +48,7 @@ class MoveMusicUI(UIComponent):
             self.app.ui_overlay_btn(
                 self.anim_close,
                 self.close,
-                self.app.close_image,  # ([("-20", "-20"), ("20", "20")], [("-20", "20"), ("20", "-20")]),
+                self.app.close_image,
             )
 
     def ui_playlists(self):

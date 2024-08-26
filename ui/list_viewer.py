@@ -52,7 +52,7 @@ class ListViewerUI(UIComponent):
                     self.ui_playlist(playlist)
 
                 self.mili.text_element(
-                    f"{len(self.app.playlists)} playlists",
+                    f"{len(self.app.playlists)} playlist{"s" if len(self.app.playlists) > 1 else ""}",
                     {"size": self.mult(19), "color": (170,) * 3},
                     None,
                     {"offset": self.scroll.get_offset()},
@@ -72,7 +72,7 @@ class ListViewerUI(UIComponent):
             self.app.ui_overlay_btn(
                 self.anim_add_playlist,
                 self.action_new,
-                self.app.playlistadd_image,  # ([("-20", 0), ("20", 0)], [(0, "20"), (0, "-20")]),
+                self.app.playlistadd_image,
                 "top",
             )
 

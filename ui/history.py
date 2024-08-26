@@ -24,10 +24,14 @@ class HistoryUI(UIComponent):
                 (0, 0, 0, 0),
                 {
                     "fillx": "80",
-                    "filly": "80",
+                    "filly": "75",
                     "align": "center",
                     "spacing": self.mult(13),
-                    "offset": (0, -self.mult(50) * (self.app.music is not None)),
+                    "offset": (
+                        0,
+                        -self.mult(50) * (self.app.music is not None)
+                        - self.app.tbarh / 2,
+                    ),
                 },
             ):
                 self.mili.rect({"color": (MODAL_CV,) * 3, "border_radius": "5"})
@@ -37,7 +41,7 @@ class HistoryUI(UIComponent):
             self.app.ui_overlay_btn(
                 self.anim_back,
                 self.back,
-                self.app.back_image,  # ([("-20", "-20"), ("20", "20")], [("-20", "20"), ("20", "-20")]),
+                self.app.back_image,
             )
 
     def ui_modal_content(self):

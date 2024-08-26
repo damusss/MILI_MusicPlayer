@@ -58,7 +58,6 @@ class MusicPlayerApp(mili.GenericApp):
         self.bg_effect_image = None
         self.bg_black_image = None
         self.bg_effect = False
-        self.make_bg_image()
         self.bg_cache = mili.ImageCache()
         self.anims = [animation(-3) for i in range(4)]
         self.anim_settings = animation(-5)
@@ -114,6 +113,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.init_mili_settings()
         self.init_sld2()
         self.init_try_set_icon_mac()
+        self.make_bg_image()
         health_check()
 
     def init_load_icons(self):
@@ -528,14 +528,13 @@ class MusicPlayerApp(mili.GenericApp):
         if self.custom_title:
             with self.mili.begin(
                 (0, 0, 0, self.tbarh), {"fillx": True, "blocking": False}
-            ) as titlebar:
-                self.tbar_id = titlebar.id
+            ):
                 self.mili.rect({"border_radius": 0, "color": (BORDER_CV / 8,) * 3})
 
                 self.ui_overlay_top_btn(
                     self.anims[0],
                     self.quit,
-                    self.close_image,  # ([("-20", "-20"), ("20", "20")], [("-20", "20"), ("20", "-20")]),
+                    self.close_image,
                     "right",
                 )
                 self.ui_overlay_top_btn(
@@ -734,6 +733,7 @@ class MusicPlayerApp(mili.GenericApp):
     def change_state(self, state):
         self.view_state = state
         self.close_menu()
+        self.mili._ctx._memory = {}
 
     def close_menu(self):
         self.menu_open = False

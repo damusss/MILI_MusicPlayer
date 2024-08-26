@@ -130,7 +130,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, size.x, size.y).move_to(
                 bottomright=(
                     self.app.window.size[0] - self.mult(8),
-                    self.app.window.size[1] - self.mult(22) - self.app.tbarh,
+                    self.app.window.size[1] - self.mult(20) - self.app.tbarh,
                 )
             ),
             {"ignore_grid": True, "z": 9999, "parent_id": 0},

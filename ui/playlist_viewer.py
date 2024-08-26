@@ -43,7 +43,10 @@ class PlaylistViewerUI(UIComponent):
         scores = {}
         rawsearch = self.search_entryline.text.strip()
         search = rawsearch.lower()
-        for i, path in enumerate(self.playlist.realpaths):
+        for i, apath in enumerate(
+            [music.audiopath for music in self.playlist.musiclist]
+        ):
+            path = self.playlist.musictable[apath].realpath
             score = 0
             rawname = str(path.stem)
             name = rawname.lower()
@@ -59,7 +62,7 @@ class PlaylistViewerUI(UIComponent):
                     score += 10
                 if rawword.lower() in name.replace(" ", ""):
                     score += 5
-            scores[path] = (score, i)
+            scores[apath] = (score, i)
         return [
             (v[1][1], v[0])
             for v in sorted(list(scores.items()), key=lambda x: x[1][0], reverse=True)
@@ -88,7 +91,7 @@ class PlaylistViewerUI(UIComponent):
             self.app.ui_overlay_btn(
                 self.anim_add_music,
                 self.action_add_music,
-                self.app.playlistadd_image,  # ([("-20", 0), ("20", 0)], [(0, "20"), (0, "-20")]),
+                self.app.playlistadd_image,
                 "top",
             )
             self.app.ui_overlay_btn(
@@ -139,7 +142,7 @@ class PlaylistViewerUI(UIComponent):
                     self.mili.element((0, 0, 10, (self.mult(80) + 3) * to_draw))
 
                 self.mili.text_element(
-                    f"{len(self.playlist.musictable)} tracks",
+                    f"{len(self.playlist.musiclist)} track{"s" if len(self.playlist.musiclist)>1 else ""}",
                     {"size": self.mult(19), "color": (170,) * 3},
                     None,
                     {"offset": self.scroll.get_offset()},

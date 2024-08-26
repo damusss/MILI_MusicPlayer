@@ -32,7 +32,13 @@ class ChangeCoverUI(UIComponent):
             )
 
             with self.mili.begin(
-                (0, 0, 0, 0), {"fillx": "80", "resizey": True, "align": "center"}
+                (0, 0, 0, 0),
+                {
+                    "fillx": "80",
+                    "resizey": True,
+                    "align": "center",
+                    "offset": (0, -self.app.tbarh),
+                },
             ):
                 self.mili.rect({"color": (MODAL_CV,) * 3, "border_radius": "5"})
 
@@ -41,7 +47,7 @@ class ChangeCoverUI(UIComponent):
             self.app.ui_overlay_btn(
                 self.anim_close,
                 self.close,
-                self.app.close_image,  # ([("-20", "-20"), ("20", "20")], [("-20", "20"), ("20", "-20")]),
+                self.app.close_image,
             )
 
     def ui_modal_content(self):
@@ -73,7 +79,7 @@ class ChangeCoverUI(UIComponent):
 
     def ui_selected_image(self):
         if self.selected_image is not None:
-            size = mili.percentage(50, self.app.window.size[0])
+            size = mili.percentage(50, min(self.app.window.size))
             self.mili.image_element(
                 self.selected_image,
                 {"cache": self.img_cache},
