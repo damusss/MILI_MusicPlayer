@@ -5,12 +5,12 @@ import pathlib
 import faulthandler
 from ui.common import *
 import moviepy.editor as moviepy
+from ui.history import HistoryUI
 from ui.settings import SettingsUI
 from ui.list_viewer import ListViewerUI
 from health_check import main as health_check
 from ui.music_controls import MusicControlsUI
 from ui.playlist_viewer import PlaylistViewerUI
-import pygame._sdl2
 
 faulthandler.enable()
 
@@ -24,7 +24,6 @@ if "win" in sys.platform or os.name == "nt":
 
 class MusicPlayerApp(mili.GenericApp):
     def __init__(self):
-        print(pygame._sdl2.audio.get_audio_device_names())
         pygame.mixer.pre_init(buffer=2048)
         pygame.mixer.init(buffer=2048)
         pygame.font.init()
@@ -43,10 +42,12 @@ class MusicPlayerApp(mili.GenericApp):
         self.list_viewer = ListViewerUI(self)
         self.music_controls = MusicControlsUI(self)
         self.settings = SettingsUI(self)
+        self.history = HistoryUI(self)
 
         self.view_state = "list"
         self.modal_state = "none"
         self.playlists: list[Playlist] = []
+        self.history_data: list[HistoryData] = []
         self.volume = 1
         self.loops = True
         self.shuffle = False
@@ -65,13 +66,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.menu_buttons = None
         self.menu_pos = None
 
-        self.music: pathlib.Path = None
-        self.music_ref: pathlib.Path = None
-        self.music_cover: pygame.Surface = None
+        self.music: MusicData = None
         self.music_paused = False
         self.music_index = -1
-        self.music_playlist: Playlist = None
-        self.music_duration = None
         self.music_play_time = 0
         self.music_play_offset = 0
         self.music_loops = False
@@ -80,29 +77,43 @@ class MusicPlayerApp(mili.GenericApp):
         self.init_data_folder_check()
         self.init_load_settings()
         self.init_loading_screen()
+        self.init_load_icons()
+        self.init_load_data()
+        self.init_mili_settings()
+        self.init_sld2()
+        self.init_try_set_icon_mac()
+        health_check()
 
+    def init_load_icons(self):
         self.close_image = load_icon("close")
         self.playlistadd_image = load_icon("playlist_add")
         self.music_cover_image = load_icon("music")
         self.playlist_cover = load_icon("playlist")
         self.settings_image = load_icon("settings")
         self.loading_image = load_icon("loading")
+        self.confirm_image = load_icon("confirm")
+        self.back_image = load_icon("back")
+        self.delete_image = load_icon("delete")
+        self.rename_image = load_icon("edit")
+        self.loopon_image = load_icon("loopon")
+        self.loopoff_image = load_icon("loopoff")
         self.window.set_icon(self.playlist_cover)
 
+    def init_load_data(self):
         make_data_folders("mp3_from_mp4", "covers", "music_covers")
         playlist_data = load_json("data/playlists.json", [])
         write_json("data/playlists_backup.json", playlist_data)
+        history_data = load_json("data/history.json", [])
 
         for pdata in playlist_data:
             name = pdata["name"]
             paths = [pathlib.Path(path) for path in pdata["paths"]]
             self.playlists.append(Playlist(name, paths, self.loading_image))
 
-        self.init_mili_settings()
-        self.init_sld2()
-        self.init_try_set_icon_mac()
-
-        health_check()
+        for hdata in history_data:
+            obj = HistoryData.load_from_data(hdata, self)
+            if obj is not None:
+                self.history_data.append(obj)
 
     def init_sld2(self):
         try:
@@ -198,36 +209,54 @@ class MusicPlayerApp(mili.GenericApp):
         except Exception:
             pass
 
-    def play_from_playlist(self, playlist: Playlist, path, idx):
-        self.music = path
-        self.music_ref = playlist.filepaths_table[path]
-        self.music_cover = playlist.music_covers.get(path, self.music_cover_image)
-        self.music_controls.offset = 0
-        self.music_controls.offset_restart_time = pygame.time.get_ticks()
+    def get_music_pos(self):
+        return (
+            self.music_play_offset
+            + (pygame.time.get_ticks() - self.music_play_time) / 1000
+        )
+
+    def add_to_history(self):
+        pos = self.get_music_pos()
+        data = HistoryData(self.music, pos, self.music.duration)
+        for olddata in self.history_data.copy():
+            if olddata.music is self.music:
+                self.history_data.remove(olddata)
+        self.history_data.append(data)
+        if len(self.history_data) > HISTORY_LEN:
+            self.history_data.pop(0)
+
+    def play_music(self, music, idx):
+        if self.music is not None:
+            self.add_to_history()
+        self.music = music
         self.music_paused = False
         self.music_index = idx
-        self.music_playlist = playlist
         self.music_play_time = pygame.time.get_ticks()
         self.music_play_offset = 0
-        if path not in playlist.musics_durations:
-            playlist.cache_duration(path)
-        self.music_duration = playlist.musics_durations[path]
-        self.music_controls.music_videoclip_cover = None
-        self.music_controls.last_videoclip_cover = None
+        if self.music.duration is NotCached:
+            self.music.cache_duration()
+
         self.music_videoclip = None
-        if self.music_ref.suffix == ".mp4":
+        if self.music.isvideo:
             try:
-                self.music_videoclip = moviepy.VideoFileClip(str(self.music_ref))
+                self.music_videoclip = moviepy.VideoFileClip(str(self.music.realpath))
             except Exception:
                 pass
-        pygame.mixer.music.load(path)
+
+        self.music_controls.offset = 0
+        self.music_controls.offset_restart_time = pygame.time.get_ticks()
+        self.music_controls.music_videoclip_cover = None
+        self.music_controls.last_videoclip_cover = None
+
+        pygame.mixer.music.load(self.music.audiopath)
         pygame.mixer.music.play(0)
         pygame.mixer.music.set_endevent(MUSIC_ENDEVENT)
         pygame.mixer.music.set_volume(self.volume)
 
     def end_music(self):
+        if self.music is not None:
+            self.add_to_history()
         self.music = None
-        self.music_duration = None
         self.music_paused = False
         pygame.mixer.music.stop()
         pygame.mixer.music.unload()
@@ -238,14 +267,18 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_videoclip = None
 
     def on_quit(self):
+        if self.music is not None:
+            self.add_to_history()
         playlist_data = [
             {
                 "name": p.name,
-                "paths": [str(p.filepaths_table[path]) for path in p.filepaths],
+                "paths": [str(m.realpath) for m in p.musiclist],
             }
             for p in self.playlists
         ]
+        history_data = [history.get_save_data() for history in self.history_data]
         write_json("data/playlists.json", playlist_data)
+        write_json("data/history.json", history_data)
         write_json(
             "data/settings.json",
             {
@@ -262,7 +295,7 @@ class MusicPlayerApp(mili.GenericApp):
                         playlist.cover, f"data/covers/{playlist.name}.png"
                     )
 
-    def ui(self):
+    def update(self):
         self.target_framerate = self.user_framerate
         if (
             not self.focused
@@ -278,12 +311,18 @@ class MusicPlayerApp(mili.GenericApp):
         ):
             self.target_framerate = 10
 
+        ratio = self.window.size[0] / self.window.size[1]
+        if ratio < 0.45:
+            self.window.size = (self.window.size[1] * 0.46, self.window.size[1])
+
         multx = self.window.size[0] / UI_SIZES[0]
         multy = self.window.size[1] / UI_SIZES[1]
         self.ui_mult = max(0.3, (multx * 0.1 + multy * 1) / 1.1)
-        self.start_style = mili.PADLESS | {"spacing": int(self.ui_mult * 3)}
 
+        self.start_style = mili.PADLESS | {"spacing": int(self.ui_mult * 3)}
         mili.animation.update_all()
+
+    def ui(self):
         self.mili.rect({"color": (BG_CV,) * 3, "border_radius": 0})
         self.ui_bg_effect()
 
@@ -294,6 +333,8 @@ class MusicPlayerApp(mili.GenericApp):
 
         if self.modal_state == "settings":
             self.settings.ui()
+        if self.modal_state == "history":
+            self.history.ui()
 
         self.music_controls.ui()
 
@@ -504,6 +545,9 @@ class MusicPlayerApp(mili.GenericApp):
             return
         if self.modal_state == "settings":
             if self.settings.event(event):
+                return
+        if self.modal_state == "history":
+            if self.history.event(event):
                 return
         if self.view_state == "list":
             self.list_viewer.event(event)

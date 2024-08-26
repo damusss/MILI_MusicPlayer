@@ -3,6 +3,7 @@ import pygame
 import pathlib
 from ui.common import *
 from ui.add_music import AddMusicUI
+from ui.entryline import UIEntryline
 from ui.move_music import MoveMusicUI
 from ui.change_cover import ChangeCoverUI
 from ui.rename_music import RenameMusicUI
@@ -32,11 +33,8 @@ class PlaylistViewerUI(UIComponent):
         self.bigcover_cache = mili.ImageCache()
         self.black_cache = mili.ImageCache()
 
-        self.back_image = load_icon("back")
-        self.rename_image = load_icon("edit")
         self.change_cover_image = load_icon("cover")
         self.forward_image = load_icon("forward")
-        self.delete_image = load_icon("delete")
         self.search_image = load_icon("search")
         self.searchoff_image = load_icon("searchoff")
         self.backspace_image = load_icon("backspace")
@@ -45,9 +43,9 @@ class PlaylistViewerUI(UIComponent):
         scores = {}
         rawsearch = self.search_entryline.text.strip()
         search = rawsearch.lower()
-        for i, path in enumerate(self.playlist.filepaths):
+        for i, path in enumerate(self.playlist.realpaths):
             score = 0
-            rawname = str(self.playlist.filepaths_table[path].stem)
+            rawname = str(path.stem)
             name = rawname.lower()
             if rawsearch in rawname:
                 score += 100
@@ -83,7 +81,7 @@ class PlaylistViewerUI(UIComponent):
 
         if self.modal_state == "none" and self.app.modal_state == "none":
             self.app.ui_overlay_top_btn(
-                self.anim_back, self.back, self.back_image, "left"
+                self.anim_back, self.back, self.app.back_image, "left"
             )
             self.app.ui_overlay_btn(
                 self.anim_add_music,
@@ -119,7 +117,9 @@ class PlaylistViewerUI(UIComponent):
             if self.search_active:
                 paths = self.sort_searched_songs()
             else:
-                paths = list(enumerate(self.playlist.filepaths))
+                paths = list(
+                    enumerate([music.audiopath for music in self.playlist.musiclist])
+                )
             if len(paths) > 0:
                 self.scroll.update(scroll_cont)
                 self.scrollbar.update(scroll_cont)
@@ -129,7 +129,7 @@ class PlaylistViewerUI(UIComponent):
                 drawn_musics = 0
                 for posi, (musici, path) in enumerate(paths):
                     drawn_musics += 1
-                    if self.ui_music(path, musici, posi):
+                    if self.ui_music(self.playlist.musictable[path], musici, posi):
                         break
 
                 if drawn_musics < len(paths):
@@ -137,7 +137,7 @@ class PlaylistViewerUI(UIComponent):
                     self.mili.element((0, 0, 10, (self.mult(80) + 3) * to_draw))
 
                 self.mili.text_element(
-                    f"{len(self.playlist.filepaths)} tracks",
+                    f"{len(self.playlist.musictable)} tracks",
                     {"size": self.mult(19), "color": (170,) * 3},
                     None,
                     {"offset": self.scroll.get_offset()},
@@ -260,7 +260,7 @@ class PlaylistViewerUI(UIComponent):
             {"align": "center"},
         )
 
-    def ui_music(self, path, idx, posi):
+    def ui_music(self, music, idx, posi):
         predicted_pos = posi * (self.mult(80) + 3) + self.scroll.get_offset()[1]
         if predicted_pos > self.app.window.size[1]:
             return True
@@ -275,10 +275,10 @@ class PlaylistViewerUI(UIComponent):
                 "anchor": "first",
             },
         ) as cont:
-            self.ui_music_bg(path, cont)
-            opath: pathlib.Path = self.playlist.filepaths_table[path]
+            self.ui_music_bg(music.audiopath, cont)
+            opath: pathlib.Path = music.realpath
             imagesize = 0
-            cover = self.playlist.music_covers.get(path, self.app.music_cover_image)
+            cover = music.cover_or(self.app.music_cover_image)
             if cover is None:
                 cover = self.app.music_cover_image
             if cover is not None:
@@ -303,19 +303,19 @@ class PlaylistViewerUI(UIComponent):
                 {"align": "first", "blocking": False},
             )
             if cont.left_just_released and self.app.can_interact():
-                self.action_start_playing(path, idx)
+                self.action_start_playing(music, idx)
             if (
                 cont.just_released_button == pygame.BUTTON_RIGHT
                 and self.app.can_interact()
             ):
                 self.app.open_menu(
-                    path,
-                    (self.rename_image, self.action_rename, self.menu_anims[0]),
+                    music,
+                    (self.app.rename_image, self.action_rename, self.menu_anims[0]),
                     (self.forward_image, self.action_forward, self.menu_anims[1]),
-                    (self.delete_image, self.action_delete, self.menu_anims[2]),
+                    (self.app.delete_image, self.action_delete, self.menu_anims[2]),
                 )
             elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
-                self.middle_selected = path
+                self.middle_selected = music
         return False
 
     def ui_music_bg(self, path, cont):
@@ -377,16 +377,14 @@ class PlaylistViewerUI(UIComponent):
 
     def action_rename(self):
         self.modal_state = "rename"
-        self.rename_music.original_path = self.app.menu_data
-        self.rename_music.original_ref = self.playlist.filepaths_table[
-            self.app.menu_data
-        ]
-        self.rename_music.entryline.text = self.rename_music.original_ref.stem
+        self.rename_music.music = self.app.menu_data
+        self.rename_music.entryline.text = self.rename_music.music.realstem
         self.rename_music.entryline.cursor = len(self.rename_music.entryline.text)
         self.app.close_menu()
 
     def action_forward(self):
         self.modal_state = "move"
+        self.move_music.music = self.app.menu_data
         self.app.close_menu()
 
     def action_delete(self):
@@ -403,14 +401,14 @@ class PlaylistViewerUI(UIComponent):
         try:
             if self.app.menu_data == self.app.music:
                 self.app.end_music()
-            path = self.app.menu_data
+            path = self.app.menu_data.audiopath
             self.playlist.remove(path)
         except Exception:
             pass
         self.app.close_menu()
 
-    def action_start_playing(self, path, idx):
-        self.app.play_from_playlist(self.playlist, path, idx)
+    def action_start_playing(self, music, idx):
+        self.app.play_music(music, idx)
 
     def stop_searching(self):
         self.search_active = False
@@ -440,7 +438,7 @@ class PlaylistViewerUI(UIComponent):
             and self.app.modal_state == "none"
         ):
             if self.middle_selected is not None:
-                idx = self.playlist.filepaths.index(self.middle_selected)
+                idx = self.playlist.musiclist.index(self.middle_selected)
                 mult = 1
                 if pygame.key.get_pressed()[pygame.K_LSHIFT]:
                     mult = 5
@@ -448,10 +446,10 @@ class PlaylistViewerUI(UIComponent):
                 new_idx = idx + inc
                 if new_idx < 0:
                     new_idx = 0
-                if new_idx >= len(self.playlist.filepaths):
-                    new_idx = len(self.playlist.filepaths) - 1
-                self.playlist.filepaths.remove(self.middle_selected)
-                self.playlist.filepaths.insert(new_idx, self.middle_selected)
+                if new_idx >= len(self.playlist.musiclist):
+                    new_idx = len(self.playlist.musiclist) - 1
+                self.playlist.musiclist.remove(self.middle_selected)
+                self.playlist.musiclist.insert(new_idx, self.middle_selected)
             else:
                 self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
                 self.scrollbar.scroll_moved()

@@ -5,7 +5,6 @@ import numpy
 import pygame
 import typing
 import pathlib
-import functools
 import threading
 import moviepy.editor as moviepy
 
@@ -20,6 +19,7 @@ POS_SUPPORTED = ["mp4", "mp3", "ogg", "flac", "mod"]
 ANIMSPEED = 50
 ANIMEASE = mili.animation.EaseIn()
 MUSIC_ENDEVENT = pygame.event.custom_type()
+HISTORY_LEN = 100
 
 BG_CV = 3
 MUSIC_CV = 3, 10, 5
@@ -79,63 +79,54 @@ def animation(value):
     )
 
 
-def load_cover_async(path, key, storage):
+def load_cover_async_OLD(path, key, storage):
     storage[key] = pygame.image.load(path).convert()
 
 
-def load_main_cover_async(path, playlist):
-    playlist.cover = pygame.image.load(path).convert()
+def load_cover_async(path, obj):
+    obj.cover = pygame.image.load(path).convert()
 
 
-class Playlist:
-    def __init__(self, name, filepaths: list[pathlib.Path] = None, loading=None):
-        self.name = name
-        self.filepaths = filepaths if filepaths else []
-        self.music_covers = {}
-        self.filepaths_table = {}
+class NotCached: ...
+
+
+class MusicData:
+    audiopath: pathlib.Path
+    realpath: pathlib.Path
+    cover: pygame.Surface
+    duration: int
+    playlist: "Playlist"
+
+    @classmethod
+    def load(cls, realpath, playlist: "Playlist", loading_image=None):
+        self = MusicData()
+        self.realpath = realpath
+        self.playlist = playlist
         self.cover = None
-        self.musics_durations = {}
+        self.duration = NotCached
 
-        if os.path.exists(f"data/covers/{self.name}.png"):
-            if loading is not None:
-                self.cover = loading
-            thread = threading.Thread(
-                target=load_main_cover_async,
-                args=(f"data/covers/{self.name}.png", self),
-            )
-            thread.start()
-
-        new_paths: list[pathlib.Path] = []
-        for path in self.filepaths:
-            self.load_music(path, new_paths, loading)
-        self.filepaths = new_paths
-
-    def load_music(self, path, new_paths, loading=None):
-        if path in new_paths or path in self.filepaths_table.values():
-            return
-        cover_path = f"data/music_covers/{self.name}_{path.stem}.png"
-        if not os.path.exists(path):
+        cover_path = f"data/music_covers/{playlist.name}_{self.realstem}.png"
+        if not os.path.exists(realpath):
             pygame.display.message_box(
                 "Could not load music",
-                f"Could not load music '{path}' as the file doesn't exist anymore. Music will be skipped",
+                f"Could not load music '{realpath}' as the file doesn't exist anymore. Music will be skipped",
                 "error",
                 None,
                 ("Understood",),
             )
             return
 
-        if path.suffix == ".mp4":
+        if self.isvideo:
             new_path = pathlib.Path(
-                f"data/mp3_from_mp4/{self.name}_{path.stem}.mp3"
+                f"data/mp3_from_mp4/{playlist.name}_{self.realstem}.mp3"
             ).resolve()
 
             if os.path.exists(new_path) and os.path.exists(cover_path):
-                new_paths.append(new_path)
-                self.load_cover_async(new_path, cover_path, loading)
-                self.filepaths_table[new_path] = path
-                return
+                self.load_cover_async(cover_path, loading_image)
+                self.audiopath = new_path
+                return self
 
-            with moviepy.VideoFileClip(str(path)) as videofile:
+            with moviepy.VideoFileClip(str(realpath)) as videofile:
                 if not os.path.exists(cover_path):
                     try:
                         frame: numpy.ndarray = videofile.get_frame(
@@ -145,24 +136,21 @@ class Playlist:
                             frame.tobytes(), videofile.size, "RGB"
                         )
                         pygame.image.save(surface, cover_path)
-                        self.music_covers[new_path] = surface
+                        self.cover = surface
                     except Exception:
-                        surface = None
-                        pygame.image.save(surface, cover_path)
-                        self.music_covers[new_path] = surface
+                        self.cover = None
                 else:
-                    self.load_cover_async(new_path, cover_path, loading)
+                    self.load_cover_async(cover_path, loading_image)
 
                 if os.path.exists(new_path):
-                    new_paths.append(new_path)
-                    self.filepaths_table[new_path] = path
-                    return
+                    self.audiopath = new_path
+                    return self
 
                 audiofile = videofile.audio
                 if audiofile is None:
                     pygame.display.message_box(
                         "Could not load music",
-                        f"Could not convert '{path}' to audio format: the video has no associated audio. Music will be skipped",
+                        f"Could not convert '{realpath}' to audio format: the video has no associated audio. Music will be skipped",
                         "error",
                         None,
                         ("Understood",),
@@ -173,46 +161,135 @@ class Playlist:
                 except Exception as e:
                     pygame.display.message_box(
                         "Could not load music",
-                        f"Could not convert '{path}' to audio format due to external exception: '{e}'. Music will be skipped",
+                        f"Could not convert '{realpath}' to audio format due to external exception: '{e}'. Music will be skipped",
                         "error",
                         None,
                         ("Understood",),
                     )
                     return
-                new_paths.append(new_path)
-                self.filepaths_table[new_path] = path
+                self.audiopath = new_path
+                return self
 
         else:
             if os.path.exists(cover_path):
-                self.load_cover_async(path, cover_path, loading)
-            new_paths.append(path)
-            self.filepaths_table[path] = path
+                self.load_cover_async(cover_path, loading_image)
+            self.audiopath = realpath
+            return self
 
-    def load_cover_async(self, key, path, loading=None):
-        if loading is not None:
-            self.music_covers[key] = loading
-        thread = threading.Thread(
-            target=load_cover_async, args=(path, key, self.music_covers)
-        )
+    def load_cover_async(self, path, loading_image=None):
+        if loading_image is not None:
+            self.cover = loading_image
+        thread = threading.Thread(target=load_cover_async, args=(path, self))
         thread.start()
 
-    def cache_duration(self, path):
+    def cache_duration(self):
         try:
-            soundfile = moviepy.AudioFileClip(str(path))
-            duration = soundfile.duration
-            self.musics_durations[path] = duration
+            soundfile = moviepy.AudioFileClip(str(self.audiopath))
+            self.duration = soundfile.duration
             soundfile.close()
         except Exception:
-            self.musics_durations[path] = None
+            self.duration = None
+
+    def cover_or(self, default):
+        if self.cover is None:
+            return default
+        return self.cover
+
+    @property
+    def realstem(self):
+        return self.realpath.stem
+
+    @property
+    def realname(self):
+        return self.realpath.name
+
+    @property
+    def realextension(self):
+        return self.realpath.suffix
+
+    @property
+    def isvideo(self):
+        return self.realpath.suffix.lower() == ".mp4"
+
+    @property
+    def pos_supported(self):
+        return self.realpath.suffix.lower()[1:] in POS_SUPPORTED
+
+
+class HistoryData:
+    def __init__(self, music: MusicData, position, duration):
+        self.music = music
+        self.position = position
+        if duration is NotCached:
+            duration = "not cached"
+        self.duration = duration
+
+    def get_save_data(self):
+        duration = self.duration
+        if duration is NotCached:
+            duration = "not cached"
+        return {
+            "audiopath": str(self.music.audiopath),
+            "position": self.position,
+            "playlist": self.music.playlist.name,
+            "duration": duration,
+        }
+
+    @classmethod
+    def load_from_data(self, data, app):
+        playlist = None
+        for pobj in app.playlists:
+            if pobj.name == data["playlist"]:
+                playlist = pobj
+                break
+        if playlist is None:
+            return
+        musicobj = playlist.musictable.get(pathlib.Path(data["audiopath"]), None)
+        if musicobj is None:
+            return
+        if data["duration"] is not None and data["duration"] != "not cached":
+            musicobj.duration = data["duration"]
+        return HistoryData(musicobj, data["position"], data["duration"])
+
+
+class Playlist:
+    def __init__(self, name, filepaths=None, loading_image=None):
+        self.name = name
+        self.cover = None
+
+        if os.path.exists(f"data/covers/{self.name}.png"):
+            if loading_image is not None:
+                self.cover = loading_image
+            thread = threading.Thread(
+                target=load_cover_async,
+                args=(f"data/covers/{self.name}.png", self),
+            )
+            thread.start()
+
+        self.musiclist: list[MusicData] = []
+        self.musictable: dict[pathlib.Path, MusicData] = {}
+        for path in filepaths:
+            self.load_music(path, loading_image)
+
+    @property
+    def realpaths(self):
+        return [music.realpath for music in self.musiclist]
+
+    def load_music(self, path, loading_image=None, idx=-1):
+        if path in self.musictable or path in self.realpaths:
+            return
+        music_data = MusicData.load(path, self, loading_image)
+        if music_data is None:
+            return
+        if idx != -1:
+            self.musiclist.insert(idx, music_data)
+        else:
+            self.musiclist.append(music_data)
+        self.musictable[music_data.audiopath] = music_data
 
     def remove(self, path):
-        self.filepaths.remove(path)
-        if path in self.filepaths_table:
-            self.filepaths_table.pop(path)
-        if path in self.music_covers:
-            self.music_covers.pop(path)
-        if path in self.musics_durations:
-            self.musics_durations.pop(path)
+        music = self.musictable.pop(path)
+        self.musiclist.remove(music)
 
 
 class UIComponent:
@@ -227,154 +304,3 @@ class UIComponent:
 
     def mult(self, size):
         return max(0, int(size * self.app.ui_mult))
-
-
-class UIEntryline:
-    def __init__(self, placeholder="Enter text...", target_files=True):
-        self.text = ""
-        self.cursor = 0
-        self.placeholder = placeholder
-        self.cursor_on = True
-        self.cursor_time = pygame.time.get_ticks()
-        self.action_start_time = pygame.time.get_ticks()
-        self.action_data = None
-        self.action_time = pygame.time.get_ticks()
-        self.target_files = target_files
-
-    def add(self, char):
-        left, right = self.text[: self.cursor], self.text[self.cursor :]
-        self.text = left + char + right
-        self.cursor += 1
-
-    def remove(self):
-        if self.cursor > 0:
-            left, right = self.text[: self.cursor], self.text[self.cursor :]
-            self.text = left[:-1] + right
-            self.cursor -= 1
-
-    def canc(self):
-        if self.cursor <= len(self.text):
-            left, right = self.text[: self.cursor], self.text[self.cursor :]
-            self.text = left[: self.cursor] + right[1:]
-
-    def move(self, dir):
-        self.cursor += dir
-        if self.cursor < 0:
-            self.cursor = 0
-        if self.cursor > len(self.text):
-            self.cursor = len(self.text)
-
-    def start_action(self, func, *args):
-        self.action_start_time = pygame.time.get_ticks()
-        self.action_data = (func, args)
-
-    def event(self, event):
-        if event.type == pygame.TEXTINPUT:
-            if self.target_files and event.text in [
-                "<",
-                ">",
-                ":",
-                '"',
-                "/",
-                "\\",
-                "|",
-                "?",
-                "*",
-                ".",
-            ]:
-                return
-            self.set_cursor_on()
-            self.add(event.text)
-            self.start_action(self.add, event.text)
-        if event.type == pygame.KEYDOWN:
-            self.set_cursor_on()
-            if event.key == pygame.K_LEFT:
-                self.move(-1)
-                self.start_action(self.move, -1)
-            elif event.key == pygame.K_RIGHT:
-                self.move(1)
-                self.start_action(self.move, 1)
-            elif event.key == pygame.K_BACKSPACE:
-                self.remove()
-                self.start_action(self.remove)
-            elif event.key == pygame.K_DELETE:
-                self.canc()
-                self.start_action(self.canc)
-        if event.type == pygame.KEYUP:
-            self.action_data = None
-
-    def update(self):
-        if pygame.time.get_ticks() - self.cursor_time >= 350:
-            self.cursor_on = not self.cursor_on
-            self.cursor_time = pygame.time.get_ticks()
-
-        if self.action_data is None:
-            return
-        if pygame.time.get_ticks() - self.action_start_time < (
-            800 if self.action_data[0] is self.add else 500
-        ):
-            self.set_cursor_on()
-            return
-
-        if pygame.time.get_ticks() - self.action_time >= (
-            80 if self.action_data[0] is self.add else 30
-        ):
-            self.action_time = pygame.time.get_ticks()
-            self.action_data[0](*self.action_data[1])
-            self.set_cursor_on()
-
-    def set_cursor_on(self):
-        self.cursor_on = True
-        self.cursor_time = pygame.time.get_ticks()
-
-    def draw_cursor(self, csize, offset, canva, element_data, rect):
-        if not self.cursor_on:
-            return
-        curs = rect.h / 1.5
-        xpos = rect.x + csize - offset + 5
-        if offset != 0:
-            xpos += 5
-        pygame.draw.line(
-            canva,
-            (255,) * 3,
-            (xpos, rect.y + rect.h / 2 - curs / 2),
-            (xpos, rect.y + rect.h / 2 + curs / 2),
-        )
-
-    def ui(self, mili_: mili.MILI, rect, style, mult, bgcol=20, outlinecol=40):
-        with mili_.begin(rect, style | {"axis": "x"}, get_data=True) as data:
-            rect = data.rect
-            mili_.rect({"color": (bgcol,) * 3, "border_radius": 0})
-            mili_.rect(
-                {
-                    "color": (outlinecol,) * 3,
-                    "outline": 1,
-                    "border_radius": 0,
-                    "draw_above": True,
-                }
-            )
-
-            txtocursor = self.text[: self.cursor]
-            size = mili_.text_size(txtocursor, {"size": mult(20)})
-            offsetx = size.x - (rect.w - 15)
-            if offsetx < 0:
-                offsetx = 0
-
-            if mili_.element(
-                (0, 0, 0, 0),
-                {
-                    "align": "center",
-                    "offset": (-offsetx, 0),
-                    "post_draw_func": functools.partial(
-                        self.draw_cursor, size.x, offsetx
-                    ),
-                },
-                get_data=True,
-            ):
-                text = self.text
-                if len(self.text) == 1:
-                    text = f"{text} "
-                mili_.text(
-                    text if self.text else self.placeholder,
-                    {"color": (255 if self.text else 120,) * 3, "size": mult(20)},
-                )

@@ -8,6 +8,7 @@ class MoveMusicUI(UIComponent):
         self.anim_close = animation(-5)
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
+        self.music: MusicData = None
 
     def ui(self):
         with self.mili.begin(
@@ -55,7 +56,12 @@ class MoveMusicUI(UIComponent):
 
                 with self.mili.begin(
                     (0, 0, 0, self.mult(60)),
-                    {"fillx": True, "anchor": "first", "axis": "x"},
+                    {
+                        "fillx": True,
+                        "anchor": "first",
+                        "axis": "x",
+                        "offset": self.scroll.get_offset(),
+                    },
                 ) as it:
                     self.mili.rect({"color": (cond(self.app, it, *LISTM_CV),) * 3})
                     cover = self.app.playlist_cover
@@ -78,27 +84,25 @@ class MoveMusicUI(UIComponent):
                         self.move(playlist)
 
     def move(self, playlist: Playlist):
-        original_ref = self.app.playlist_viewer.playlist.filepaths_table[
-            self.app.menu_data
-        ]
-
-        if self.app.menu_data == self.app.music:
+        if self.music == self.app.music:
             self.app.end_music()
 
-        mp3path = f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{original_ref.stem}.mp3"
-        newmp3path = f"data/mp3_from_mp4/{playlist.name}_{original_ref.stem}.mp3"
+        mp3path = f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.mp3"
+        newmp3path = f"data/mp3_from_mp4/{playlist.name}_{self.music.realstem}.mp3"
         if os.path.exists(mp3path):
             if not os.path.exists(newmp3path):
                 os.rename(mp3path, newmp3path)
 
-        coverpath = f"data/music_covers/{self.app.playlist_viewer.playlist.name}_{original_ref.stem}.png"
+        coverpath = f"data/music_covers/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.png"
         if os.path.exists(coverpath):
-            newcoverpath = f"data/music_covers/{playlist.name}_{original_ref.stem}.png"
+            newcoverpath = (
+                f"data/music_covers/{playlist.name}_{self.music.realstem}.png"
+            )
             if not os.path.exists(newcoverpath):
                 os.rename(coverpath, newcoverpath)
 
-        self.app.playlist_viewer.playlist.remove(self.app.menu_data)
-        playlist.load_music(original_ref, playlist.filepaths)
+        self.app.playlist_viewer.playlist.remove(self.music.audiopath)
+        playlist.load_music(self.music.realpath, self.app.loading_image)
 
         self.close()
 

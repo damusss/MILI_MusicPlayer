@@ -26,8 +26,7 @@ class MusicControlsUI(UIComponent):
         self.pause_image = load_icon("pause")
         self.skip_next_image = load_icon("skip_next")
         self.skip_previous_image = load_icon("skip_previous")
-        self.loopon_image = load_icon("loopon")
-        self.loopoff_image = load_icon("loopoff")
+
         self.minip_image = load_icon("opennew")
         self.maxip_image = pygame.transform.flip(self.minip_image, True, True)
 
@@ -69,7 +68,7 @@ class MusicControlsUI(UIComponent):
     def ui_container(self):
         bigcover = False
         imgsize = 0
-        cover = self.app.music_cover
+        cover = self.app.music.cover
         if self.music_videoclip_cover is not None and self.app.focused:
             cover = self.music_videoclip_cover
         if cover is not None:
@@ -84,6 +83,13 @@ class MusicControlsUI(UIComponent):
                 (0, 0, imgsize, imgsize),
                 {"align": "first", "blocking": True},
             )
+            if it.left_just_released and self.app.can_interact():
+                if self.app.view_state != "playlist":
+                    self.app.playlist_viewer.enter(self.app.music.playlist)
+                self.app.playlist_viewer.scroll.set_scroll(
+                    0, self.app.music_index * (self.app.mult(80) + 3)
+                )
+                self.app.playlist_viewer.scrollbar.scroll_moved()
             if it.absolute_hover and self.app.can_interact():
                 bigcover = True
         else:
@@ -92,10 +98,7 @@ class MusicControlsUI(UIComponent):
         return bigcover
 
     def ui_track_control(self):
-        if (
-            self.app.music_ref.suffix[1:].lower() in POS_SUPPORTED
-            or self.app.music_duration is None
-        ):
+        if self.app.music.pos_supported or self.app.music.duration is None:
             if self.small_cont:
                 self.ui_small_slider()
             else:
@@ -112,12 +115,9 @@ class MusicControlsUI(UIComponent):
             )
 
     def ui_time(self):
-        pos = (
-            self.app.music_play_offset
-            + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
-        )
+        pos = self.app.get_music_pos()
         txt, txtstyle = (
-            f"{int(pos/60):.0f}:{pos%60:.0f}/{int(self.app.music_duration/60):.0f}:{self.app.music_duration%60:.0f}",
+            f"{int(pos/60):.0f}:{pos%60:.0f}/{int(self.app.music.duration/60):.0f}:{self.app.music.duration%60:.0f}",
             {"color": (120,) * 3, "size": self.mult(20)},
         )
         size = self.mili.text_size(txt, txtstyle)
@@ -135,11 +135,8 @@ class MusicControlsUI(UIComponent):
 
     def ui_small_slider(self):
         totalw = self.app.window.size[0] - self.mult(15)
-        pos = (
-            self.app.music_play_offset
-            + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
-        )
-        percentage = (pos) / self.app.music_duration
+        pos = self.app.get_music_pos()
+        percentage = (pos) / self.app.music.duration
 
         if percentage > 1.01:
             self.music_auto_finish()
@@ -172,11 +169,8 @@ class MusicControlsUI(UIComponent):
     def ui_slider(self):
         self.slider.handle_size = (self.mult(48), self.mult(48))
         totalw = self.app.window.size[0] - self.mult(15)
-        pos = (
-            self.app.music_play_offset
-            + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
-        )
-        percentage = (pos) / self.app.music_duration
+        pos = self.app.get_music_pos()
+        percentage = (pos) / self.app.music.duration
 
         if percentage > 1.01:
             self.music_auto_finish()
@@ -218,13 +212,13 @@ class MusicControlsUI(UIComponent):
 
                 if handle.left_just_released and self.app.can_interact():
                     pygame.mixer.music.set_pos(
-                        self.slider.valuex * self.app.music_duration
+                        self.slider.valuex * self.app.music.duration
                     )
                     self.app.music_play_time = pygame.time.get_ticks()
                     self.app.music_play_offset = (
-                        self.slider.valuex * self.app.music_duration
+                        self.slider.valuex * self.app.music.duration
                     )
-                    percentage = (pos) / self.app.music_duration
+                    percentage = (pos) / self.app.music.duration
                 if not handle.left_pressed:
                     self.slider.valuex = percentage
                 if handle.just_hovered and self.app.can_interact():
@@ -239,7 +233,7 @@ class MusicControlsUI(UIComponent):
             get_data=True,
         ) as cont:
             txt, txtstyle = (
-                f"{self.app.music_ref.name}",
+                f"{self.app.music.realname}",
                 {"size": self.mult(22), "align": "left"},
             )
             size = self.mili.text_size(txt, txtstyle).x
@@ -264,7 +258,7 @@ class MusicControlsUI(UIComponent):
             self.ui_controls()
 
     def ui_big_cover(self):
-        cover = self.app.music_cover
+        cover = self.app.music.cover
         if self.music_videoclip_cover is not None:
             cover = self.music_videoclip_cover
         if cover is None or cover is self.app.music_cover_image:
@@ -315,10 +309,12 @@ class MusicControlsUI(UIComponent):
                 50,
                 1,
             )
-            if self.app.music_index < len(self.app.music_playlist.filepaths) - 1:
+            if self.app.music_index < len(self.app.music.playlist.musiclist) - 1:
                 self.ui_control_btn(self.skip_next_image, self.action_skip_next, 40, 2)
             self.ui_control_btn(
-                self.loopon_image if self.app.music_loops else self.loopoff_image,
+                self.app.loopon_image
+                if self.app.music_loops
+                else self.app.loopoff_image,
                 self.action_loop,
                 40,
                 3,
@@ -380,7 +376,7 @@ class MusicControlsUI(UIComponent):
         self.app.bg_effect = False
         if not self.app.focused:
             return
-        image = self.app.music_cover
+        image = self.app.music.cover
         if self.music_videoclip_cover is not None:
             image = self.music_videoclip_cover
         if image is None:
@@ -411,51 +407,44 @@ class MusicControlsUI(UIComponent):
             self.app.music_paused = True
 
     def action_skip_next(self, stop_if_end=False, consider_loop=False):
-        if len(self.app.music_playlist.filepaths) <= 0:
+        if len(self.app.music.playlist.musiclist) <= 0:
             if stop_if_end:
                 self.app.end_music()
             return
         new_idx = self.app.music_index + 1
-        if new_idx >= len(self.app.music_playlist.filepaths):
+        if new_idx >= len(self.app.music.playlist.musiclist):
             if consider_loop and self.app.loops:
                 new_idx = 0
             else:
                 if stop_if_end:
                     self.app.end_music()
                 return
-        self.app.play_from_playlist(
-            self.app.music_playlist, self.app.music_playlist.filepaths[new_idx], new_idx
-        )
+        self.app.play_music(self.app.music.playlist.musiclist[new_idx], new_idx)
         self.app.playlist_viewer.scroll.scroll(0, self.app.mult(80) + 3)
         self.app.playlist_viewer.scrollbar.scroll_moved()
 
     def action_skip_previous(self):
-        if len(self.app.music_playlist.filepaths) <= 0:
+        if len(self.app.music.playlist.musiclist) <= 0:
             return
         new_idx = self.app.music_index - 1
         if new_idx < 0:
             return
-        self.app.play_from_playlist(
-            self.app.music_playlist, self.app.music_playlist.filepaths[new_idx], new_idx
-        )
+        self.app.play_music(self.app.music.playlist.musiclist[new_idx], new_idx)
 
     def music_auto_finish(self):
         if self.app.music_loops:
-            self.app.play_from_playlist(
-                self.app.music_playlist, self.app.music, self.app.music_index
-            )
+            self.app.play_music(self.app.music, self.app.music_index)
             return
         if self.app.shuffle:
-            music_available = self.app.music_playlist.filepaths.copy()
+            music_available = self.app.music.playlist.musiclist.copy()
             music_available.remove(self.app.music)
             new_music = random.choice(music_available)
-            self.app.play_from_playlist(
-                self.app.music_playlist,
+            self.app.play_music(
                 new_music,
-                self.app.music_playlist.filepaths.index(new_music),
+                self.app.music.playlist.musiclist.index(new_music),
             )
             self.app.playlist_viewer.scroll.set_scroll(
-                0, self.app.music_index * (self.app.mult(80) + 6)
+                0, self.app.music_index * (self.app.mult(80) + 3)
             )
             self.app.playlist_viewer.scrollbar.scroll_moved()
             return

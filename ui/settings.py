@@ -8,19 +8,18 @@ class SettingsUI(UIComponent):
     def init(self):
         self.anim_close = animation(-5)
         self.anim_handle = animation(-3)
-        self.anims = [animation(-3) for i in range(4)]
+        self.anims = [animation(-3) for i in range(5)]
         self.cache = mili.ImageCache()
         self.slider = mili.Slider(False, True, (10, 10))
 
         self.vol0_image = load_icon("vol0")
         self.vol1_image = load_icon("vol1")
         self.vollow_image = load_icon("vollow")
-        self.loopon_image = load_icon("loopon")
-        self.loopoff_image = load_icon("loopoff")
         self.shuffleon_image = load_icon("shuffleon")
         self.shuffleoff_image = load_icon("shuffleoff")
         self.fps30_image = load_icon("fps30")
         self.fps60_image = load_icon("fps60")
+        self.history_image = load_icon("history")
 
     def ui(self):
         with self.mili.begin(
@@ -51,7 +50,22 @@ class SettingsUI(UIComponent):
 
     def ui_modal_content(self):
         self.mili.text_element("Settings", {"size": self.mult(26)}, None, mili.CENTER)
-        self.ui_slider()
+        with self.mili.begin(
+            (0, 0, mili.percentage(70, self.app.window.size[0]), 0),
+            mili.X
+            | mili.PADLESS
+            | {"resizey": True, "clip_draw": False, "spacing": self.mult(10)},
+        ):
+            vol_image = self.vol0_image
+            if self.app.volume >= 0.5:
+                vol_image = self.vol1_image
+            elif self.app.volume > 0.05:
+                vol_image = self.vollow_image
+            self.app.ui_image_btn(vol_image, self.action_mute, self.anims[0], 45)
+            self.ui_slider()
+        self.ui_buttons()
+
+    def ui_buttons(self):
         with self.mili.begin(
             None,
             {
@@ -62,30 +76,30 @@ class SettingsUI(UIComponent):
                 "align": "center",
             },
         ):
-            vol_image = self.vol0_image
-            if self.app.volume >= 0.5:
-                vol_image = self.vol1_image
-            elif self.app.volume > 0.05:
-                vol_image = self.vollow_image
-            self.app.ui_image_btn(vol_image, self.action_mute, self.anims[0])
             self.app.ui_image_btn(
-                self.loopon_image if self.app.loops else self.loopoff_image,
+                self.history_image, self.action_history, self.anims[1]
+            )
+            self.app.ui_image_btn(
+                self.app.loopon_image if self.app.loops else self.app.loopoff_image,
                 self.action_loop,
-                self.anims[1],
+                self.anims[2],
                 br="50" if not self.app.loops else "5",
             )
             self.app.ui_image_btn(
                 self.shuffleon_image if self.app.shuffle else self.shuffleoff_image,
                 self.action_shuffle,
-                self.anims[2],
+                self.anims[3],
                 br="50" if not self.app.shuffle else "5",
             )
             self.app.ui_image_btn(
                 self.fps60_image if self.app.user_framerate == 60 else self.fps30_image,
                 self.action_fps,
-                self.anims[3],
+                self.anims[4],
                 br="5",
             )
+
+    def action_history(self):
+        self.app.modal_state = "history"
 
     def action_fps(self):
         if self.app.user_framerate == 60:
@@ -100,8 +114,8 @@ class SettingsUI(UIComponent):
         self.slider.handle_size = self.mult(40), self.mult(40)
 
         with self.mili.begin(
-            (0, 0, mili.percentage(70, self.app.window.size[0]), self.mult(10)),
-            {"align": "center"} | self.slider.area_style,
+            (0, 0, 0, self.mult(10)),
+            {"align": "center", "fillx": True} | self.slider.area_style,
             get_data=True,
         ) as bar:
             self.slider.update_area(bar)

@@ -3,6 +3,7 @@ import mili
 import pygame
 import pathlib
 from ui.common import *
+from ui.entryline import UIEntryline
 import tkinter.filedialog as filedialog
 
 
@@ -17,7 +18,6 @@ class NewPlaylistUI(UIComponent):
         self.create_type = "empty"
         self.selected_folder = None
 
-        self.confirm_image = load_icon("confirm")
         self.upload_image = load_icon("upload")
 
     def ui(self):
@@ -99,7 +99,7 @@ class NewPlaylistUI(UIComponent):
             self.mult,
         )
         self.app.ui_image_btn(
-            self.confirm_image, self.action_create_empty, self.anim_create
+            self.app.confirm_image, self.action_create_empty, self.anim_create
         )
 
     def ui_folder_playlist_modal(self):
@@ -130,7 +130,7 @@ class NewPlaylistUI(UIComponent):
                 br="30",
             )
             self.app.ui_image_btn(
-                self.confirm_image, self.action_create_from_folder, self.anim_create
+                self.app.confirm_image, self.action_create_from_folder, self.anim_create
             )
         self.mili.text_element(
             "Creating might take some time if MP4 files are present",

@@ -13,7 +13,6 @@ class AddMusicUI(UIComponent):
         self.selected_files = None
         self.cache = mili.ImageCache()
 
-        self.confirm_image = load_icon("confirm")
         self.upload_image = load_icon("uploadf")
 
     def ui(self):
@@ -71,7 +70,7 @@ class AddMusicUI(UIComponent):
                 br="30",
             )
             self.app.ui_image_btn(
-                self.confirm_image, self.confirm_add, self.anim_create
+                self.app.confirm_image, self.confirm_add, self.anim_create
             )
         self.ui_warning()
 
@@ -133,9 +132,7 @@ class AddMusicUI(UIComponent):
             )
             return
         for path in self.selected_files:
-            self.app.playlist_viewer.playlist.load_music(
-                path, self.app.playlist_viewer.playlist.filepaths
-            )
+            self.app.playlist_viewer.playlist.load_music(path, self.app.loading_image)
         self.close()
 
     def close(self):

@@ -3,6 +3,7 @@ import mili
 import pygame
 import pathlib
 from ui.common import *
+from ui.entryline import UIEntryline
 
 
 class RenameMusicUI(UIComponent):
@@ -11,9 +12,8 @@ class RenameMusicUI(UIComponent):
         self.anim_create = animation(-3)
         self.entryline = UIEntryline("Enter name (no filetype)...")
         self.cache = mili.ImageCache()
-        self.confirm_image = load_icon("confirm")
-        self.original_path: pathlib.Path = None
-        self.original_ref: pathlib.Path = None
+
+        self.music: MusicData = None
 
     def ui(self):
         with self.mili.begin(
@@ -52,7 +52,9 @@ class RenameMusicUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.app.ui_image_btn(self.confirm_image, self.action_confirm, self.anim_create)
+        self.app.ui_image_btn(
+            self.app.confirm_image, self.action_confirm, self.anim_create
+        )
         self.mili.text_element(
             "Renaming will modify the file on disk. Do not include the file type.",
             {
@@ -77,7 +79,7 @@ class RenameMusicUI(UIComponent):
                 ("Understood",),
             )
             return
-        if new_name == self.original_ref.stem:
+        if new_name == self.music.realstem:
             pygame.display.message_box(
                 "Invalid name",
                 "Cannot change name to the same name.",
@@ -86,11 +88,11 @@ class RenameMusicUI(UIComponent):
                 ("Understood",),
             )
             return
-        new_path = self.original_ref.parent / f"{new_name}{self.original_ref.suffix}"
+        new_path = self.music.realpath.parent / f"{new_name}{self.music.realextension}"
         if os.path.exists(new_path):
             pygame.display.message_box(
                 "File already exists",
-                f"A file with the same name already exists in '{self.original_ref.parent}'.",
+                f"A file with the same name already exists in '{self.music.realpath.parent}'.",
                 "error",
                 None,
                 ("Understood",),
@@ -100,11 +102,11 @@ class RenameMusicUI(UIComponent):
         self.close()
 
     def final_rename(self, new_path, new_stem):
-        if self.original_path == self.app.music:
+        if self.music == self.app.music:
             self.app.end_music()
 
         try:
-            os.rename(self.original_ref, new_path)
+            os.rename(self.music.realpath, new_path)
         except Exception as e:
             pygame.display.message_box(
                 "Operation failed",
@@ -116,7 +118,7 @@ class RenameMusicUI(UIComponent):
             self.close()
             return
 
-        mp3path = f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{self.original_ref.stem}.mp3"
+        mp3path = f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.mp3"
         newmp3path = (
             f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{new_stem}.mp3"
         )
@@ -124,22 +126,17 @@ class RenameMusicUI(UIComponent):
             if not os.path.exists(newmp3path):
                 os.rename(mp3path, newmp3path)
 
-        coverpath = f"data/music_covers/{self.app.playlist_viewer.playlist.name}_{self.original_ref.stem}.png"
+        coverpath = f"data/music_covers/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.png"
         if os.path.exists(coverpath):
             newcoverpath = f"data/music_covers/{self.app.playlist_viewer.playlist.name}_{new_stem}.png"
             if not os.path.exists(newcoverpath):
                 os.rename(coverpath, newcoverpath)
 
-        idx = self.app.playlist_viewer.playlist.filepaths.index(self.original_path)
-        self.app.playlist_viewer.playlist.remove(self.original_path)
+        idx = self.app.playlist_viewer.playlist.musiclist.index(self.music)
+        self.app.playlist_viewer.playlist.remove(self.music.audiopath)
         self.app.playlist_viewer.playlist.load_music(
-            new_path, self.app.playlist_viewer.playlist.filepaths
+            new_path, self.app.loading_image, idx
         )
-        for pt in [new_path.resolve(), pathlib.Path(newmp3path).resolve()]:
-            if pt in self.app.playlist_viewer.playlist.filepaths:
-                self.app.playlist_viewer.playlist.filepaths.remove(pt)
-                self.app.playlist_viewer.playlist.filepaths.insert(idx, pt)
-                break
 
         self.close()
 

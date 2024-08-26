@@ -12,7 +12,7 @@ class ChangeCoverUI(UIComponent):
         self.anims = [animation(-3) for i in range(4)]
 
         self.upload_image = load_icon("uploadf")
-        self.confirm_image = load_icon("confirm")
+
         self.brush_image = load_icon("brush")
         self.reset_image = load_icon("reset")
         self.cache = mili.ImageCache()
@@ -67,7 +67,7 @@ class ChangeCoverUI(UIComponent):
                 self.upload_image, self.action_file_from_dialog, self.anims[2], br="30"
             )
             self.app.ui_image_btn(
-                self.confirm_image, self.action_confirm, self.anims[3]
+                self.app.confirm_image, self.action_confirm, self.anims[3]
             )
         self.ui_info()
 
@@ -143,16 +143,16 @@ class ChangeCoverUI(UIComponent):
 
         playlist = self.app.playlist_viewer.playlist
         shift = pygame.key.get_pressed()[pygame.K_LSHIFT]
-        if len(playlist.filepaths) <= 0:
+        if len(playlist.musiclist) <= 0:
             self.message = "Cannot generate from empty playlist"
             self.message_type = "error"
-        elif len(playlist.filepaths) == 1 or len(playlist.filepaths) == 3:
-            self.selected_image = playlist.music_covers.get(
-                playlist.filepaths[0], self.app.music_cover_image
+        elif len(playlist.musiclist) == 1 or len(playlist.musiclist) == 3:
+            self.selected_image = playlist.musiclist[0].cover_or(
+                self.app.music_cover_image
             )
-        elif len(playlist.filepaths) == 2:
+        elif len(playlist.musiclist) == 2:
             self.generate_cover_2(playlist)
-        elif len(playlist.filepaths) < 9 or not shift:
+        elif len(playlist.musiclist) < 9 or not shift:
             self.generate_cover_4(playlist)
         elif shift:
             self.generate_cover_9(playlist)
@@ -160,11 +160,7 @@ class ChangeCoverUI(UIComponent):
     def generate_cover_9(self, playlist):
         covers = []
         for idx in [0, 1, 2, 3, 4, -4, -3, -2, -1]:
-            covers.append(
-                playlist.music_covers.get(
-                    playlist.filepaths[idx], self.app.music_cover_image
-                )
-            )
+            covers.append(playlist.musiclist[idx].cover_or(self.app.music_cover_image))
         size = covers[0].get_width()
         sz2 = size / 2
         new_surf = pygame.Surface((size * 3, size * 3))
@@ -191,11 +187,7 @@ class ChangeCoverUI(UIComponent):
     def generate_cover_4(self, playlist):
         covers = []
         for idx in [0, 1, -2, -1]:
-            covers.append(
-                playlist.music_covers.get(
-                    playlist.filepaths[idx], self.app.music_cover_image
-                )
-            )
+            covers.append(playlist.musiclist[idx].cover_or(self.app.music_cover_image))
         size = covers[0].get_width()
         sz2 = size / 2
         new_surf = pygame.Surface((size * 2, size * 2))
@@ -215,12 +207,8 @@ class ChangeCoverUI(UIComponent):
         self.selected_image = new_surf
 
     def generate_cover_2(self, playlist):
-        first = playlist.music_covers.get(
-            playlist.filepaths[0], self.app.music_cover_image
-        )
-        second = playlist.music_covers.get(
-            playlist.filepaths[1], self.app.music_cover_image
-        )
+        first = playlist.musiclist[0].cover_or(self.app.music_cover_image)
+        second = playlist.musiclist[1].cover_or(self.app.music_cover_image)
         size = first.get_width()
         new_surf = pygame.Surface((size * 2, size * 2))
         first = mili.fit_image(pygame.Rect(0, 0, size, size), first, smoothscale=True)

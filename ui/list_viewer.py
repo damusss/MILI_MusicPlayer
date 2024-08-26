@@ -18,9 +18,6 @@ class ListViewerUI(UIComponent):
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 8, 3, 3, 0, "y")
 
-        self.delete_image = load_icon("delete")
-        self.rename_image = load_icon("edit")
-
     def ui(self):
         self.scrollbar.short_size = self.mult(8)
         self.mili.text_element(
@@ -125,8 +122,8 @@ class ListViewerUI(UIComponent):
             ):
                 self.app.open_menu(
                     playlist,
-                    (self.rename_image, self.action_rename, self.menu_anims[0]),
-                    (self.delete_image, self.action_delete, self.menu_anims[1]),
+                    (self.app.rename_image, self.action_rename, self.menu_anims[0]),
+                    (self.app.delete_image, self.action_delete, self.menu_anims[1]),
                 )
             elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
                 self.middle_selected = playlist

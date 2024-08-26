@@ -3,6 +3,7 @@ import mili
 import pygame
 import pathlib
 from ui.common import *
+from ui.entryline import UIEntryline
 
 
 class RenamePlaylistUI(UIComponent):
@@ -11,7 +12,6 @@ class RenamePlaylistUI(UIComponent):
         self.anim_create = animation(-3)
         self.entryline = UIEntryline("Enter name...")
         self.cache = mili.ImageCache()
-        self.confirm_image = load_icon("confirm")
 
     def ui(self):
         with self.mili.begin(
@@ -50,7 +50,9 @@ class RenamePlaylistUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.app.ui_image_btn(self.confirm_image, self.action_confirm, self.anim_create)
+        self.app.ui_image_btn(
+            self.app.confirm_image, self.action_confirm, self.anim_create
+        )
         self.mili.text_element(
             "Renaming might take some time if MP4 files were present",
             {
@@ -119,7 +121,7 @@ class RenamePlaylistUI(UIComponent):
             if not os.path.exists(f"data/covers/{name}.png"):
                 os.rename(f"data/covers/{old_name}.png", f"data/covers/{name}.png")
         self.app.menu_data.__init__(
-            name, list(self.app.menu_data.filepaths_table.values())
+            name, list(self.app.menu_data.realpaths), self.app.loading_image
         )
 
     def close(self):

@@ -194,11 +194,8 @@ class MiniplayerUI:
 
     def ui_line(self):
         totalw = self.window.size[0] - self.mult(8)
-        pos = (
-            self.app.music_play_offset
-            + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
-        )
-        percentage = (pos) / self.app.music_duration
+        pos = self.app.get_music_pos()
+        percentage = (pos) / self.app.music.duration
 
         sizeperc = totalw * percentage
         data = self.mili.line_element(
@@ -219,8 +216,8 @@ class MiniplayerUI:
 
     def ui_cover(self):
         cover = self.app.music_cover_image
-        if self.app.music_cover is not None:
-            cover = self.app.music_cover
+        if self.app.music.cover is not None:
+            cover = self.app.music.cover
         if self.app.music_controls.music_videoclip_cover:
             cover = self.app.music_controls.music_videoclip_cover
         if cover is None:
@@ -270,7 +267,7 @@ class MiniplayerUI:
                 self.action_play,
                 1,
             )
-            if self.app.music_index < len(self.app.music_playlist.filepaths) - 1:
+            if self.app.music_index < len(self.app.music.playlist.musiclist) - 1:
                 self.ui_control_btn(
                     self.app.music_controls.skip_next_image, 50, self.action_next, 2
                 )

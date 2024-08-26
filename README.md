@@ -43,6 +43,7 @@ Power saving
 - Playlist shuffle
 - MP4 Video Player
 - BG Effects
+- History
 
 ### Miniplayer
 
