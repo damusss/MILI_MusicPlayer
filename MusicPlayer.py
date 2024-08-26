@@ -32,10 +32,11 @@ class MusicPlayerApp(mili.GenericApp):
                 "Music Player",
                 (PREFERRED_SIZES[0], PREFERRED_SIZES[1]),
                 resizable=True,
+                borderless=True,
             )
         )
-        self.window.minimum_size = (200, 300)
-        self.start_style = mili.PADLESS
+        self.window.minimum_size = WIN_MIN_SIZE
+        self.start_style = mili.PADLESS | {"spacing": 0}
         self.user_framerate = 60
 
         self.playlist_viewer = PlaylistViewerUI(self)
@@ -59,12 +60,43 @@ class MusicPlayerApp(mili.GenericApp):
         self.bg_effect = False
         self.make_bg_image()
         self.bg_cache = mili.ImageCache()
-        self.anim_quit = animation(-3)
+        self.anims = [animation(-3) for i in range(4)]
         self.anim_settings = animation(-5)
         self.menu_open = False
         self.menu_data: Playlist | pathlib.Path = None
         self.menu_buttons = None
         self.menu_pos = None
+        self.tbarh = 0
+        self.tbar_rect = pygame.Rect()
+        self.drag_rel_pos = pygame.Vector2()
+        self.drag_press_pos = pygame.Vector2()
+        self.window_drag = False
+        self.window_resize = False
+        self.window_stop_special = False
+        self.window_drag_effective = False
+        self.resize_handle = None
+        self.resize_press_pos = pygame.Vector2()
+        self.before_maximize_data = None
+        self.maximized = False
+        self.custom_title = True
+        self.resize_handles = [
+            ResizeHandle(
+                self, "topleft", True, None, "xy", pygame.SYSTEM_CURSOR_SIZENWSE
+            ),
+            ResizeHandle(
+                self, "topright", True, None, "y", pygame.SYSTEM_CURSOR_SIZENESW
+            ),
+            ResizeHandle(
+                self, "bottomleft", True, None, "x", pygame.SYSTEM_CURSOR_SIZENESW
+            ),
+            ResizeHandle(
+                self, "bottomright", True, None, None, pygame.SYSTEM_CURSOR_SIZENWSE
+            ),
+            ResizeHandle(self, "top", False, "x", "y", pygame.SYSTEM_CURSOR_SIZENS),
+            ResizeHandle(self, "left", False, "y", "x", pygame.SYSTEM_CURSOR_SIZEWE),
+            ResizeHandle(self, "bottom", False, "x", None, pygame.SYSTEM_CURSOR_SIZENS),
+            ResizeHandle(self, "right", False, "y", None, pygame.SYSTEM_CURSOR_SIZEWE),
+        ]
 
         self.music: MusicData = None
         self.music_paused = False
@@ -75,9 +107,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_videoclip = None
 
         self.init_data_folder_check()
+        self.init_load_icons()
         self.init_load_settings()
         self.init_loading_screen()
-        self.init_load_icons()
         self.init_load_data()
         self.init_mili_settings()
         self.init_sld2()
@@ -97,6 +129,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.rename_image = load_icon("edit")
         self.loopon_image = load_icon("loopon")
         self.loopoff_image = load_icon("loopoff")
+        self.minimize_image = load_icon("minimize")
+        self.maximize_image = load_icon("maximize")
+        self.resize_image = load_icon("resize")
         self.window.set_icon(self.playlist_cover)
 
     def init_load_data(self):
@@ -141,18 +176,38 @@ class MusicPlayerApp(mili.GenericApp):
         mili.ImageCache.preallocate_caches(2000)
 
     def init_load_settings(self):
+        custom_title = True
+        win_pos = self.window.position
+        win_size = self.window.size
         try:
             data = load_json(
                 "data/settings.json",
-                {"volume": 1, "loops": True, "shuffle": False, "fps": 60},
+                {
+                    "volume": 1,
+                    "loops": True,
+                    "shuffle": False,
+                    "fps": 60,
+                    "custom_title": True,
+                    "win_pos": win_pos,
+                    "win_size": win_size,
+                },
             )
             self.volume = data["volume"]
             self.loops = data["loops"]
             self.shuffle = data["shuffle"]
             self.user_framerate = data["fps"]
+            custom_title = data["custom_title"]
+            win_pos = data["win_pos"]
+            win_size = data["win_size"]
         except Exception:
             pass
         self.target_framerate = self.user_framerate
+        if win_pos != self.window.position:
+            self.window.position = win_pos
+        if win_size != self.window.size:
+            self.window.size = win_size
+        if not custom_title:
+            self.toggle_custom_title()
 
     def init_data_folder_check(self):
         if not os.path.exists("data"):
@@ -208,6 +263,24 @@ class MusicPlayerApp(mili.GenericApp):
                         file.write("")
         except Exception:
             pass
+
+    def toggle_custom_title(self):
+        if self.custom_title:
+            borderless = False
+            self.custom_title = False
+        else:
+            borderless = True
+            self.custom_title = True
+        self.window = pygame.Window(
+            self.window.title,
+            self.window.size,
+            self.window.position,
+            resizable=True,
+            borderless=borderless,
+        )
+        self.window.minimum_size = WIN_MIN_SIZE
+        self.window.set_icon(self.playlist_cover)
+        self.mili.set_canva(self.window.get_surface())
 
     def get_music_pos(self):
         return (
@@ -286,6 +359,9 @@ class MusicPlayerApp(mili.GenericApp):
                 "loops": self.loops,
                 "shuffle": self.shuffle,
                 "fps": self.user_framerate,
+                "custom_title": self.custom_title,
+                "win_pos": self.window.position,
+                "win_size": self.window.size,
             },
         )
         for playlist in self.playlists:
@@ -311,6 +387,9 @@ class MusicPlayerApp(mili.GenericApp):
         ):
             self.target_framerate = 10
 
+        if self.custom_title:
+            self.update_borders()
+
         ratio = self.window.size[0] / self.window.size[1]
         if ratio < 0.45:
             self.window.size = (self.window.size[1] * 0.46, self.window.size[1])
@@ -319,43 +398,182 @@ class MusicPlayerApp(mili.GenericApp):
         multy = self.window.size[1] / UI_SIZES[1]
         self.ui_mult = max(0.3, (multx * 0.1 + multy * 1) / 1.1)
 
+        if self.custom_title:
+            self.tbarh = 30  # self.mult(30)
+            self.tbar_rect = pygame.Rect(0, 0, self.window.size[0], self.tbarh)
+        else:
+            self.tbarh = 0
+
         self.start_style = mili.PADLESS | {"spacing": int(self.ui_mult * 3)}
         mili.animation.update_all()
 
+    def update_borders(self):
+        if not self.can_abs_interact():
+            return
+        self.window_stop_special = False
+
+        just = pygame.mouse.get_just_pressed()[0]
+        mpos = pygame.Vector2(pygame.mouse.get_pos())
+        pressed = pygame.mouse.get_pressed()[0]
+
+        for handle in self.resize_handles:
+            handle.make_rect()
+
+        anyhover = False
+        for handle in self.resize_handles:
+            if handle.rect.collidepoint(mpos):
+                pygame.mouse.set_cursor(handle.cursor)
+                anyhover = True
+                break
+        if not anyhover:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+        if just:
+            for handle in self.resize_handles:
+                if handle.rect.collidepoint(mpos):
+                    self.window_resize = True
+                    self.resize_handle = handle
+                    self.resize_press_pos = mpos
+                    break
+        if pressed:
+            if self.window_resize:
+                self.resize_handle.update(mpos)
+        else:
+            if self.window_resize:
+                self.window_stop_special = True
+            self.window_resize = False
+
+        if pressed:
+            if self.window_resize:
+                rel = mpos - self.resize_press_pos
+                self.window.size += rel
+                self.resize_press_pos = mpos
+        else:
+            if self.window_resize:
+                self.window_stop_special = True
+            self.window_resize = False
+
+        if self.window_resize:
+            return
+
+        if just and self.tbar_rect.collidepoint(mpos):
+            self.drag_rel_pos = mpos
+            self.drag_press_pos = pygame.Vector2(
+                self.drag_rel_pos + self.window.position
+            )
+            self.window_drag = True
+            self.window_drag_effective = False
+
+        if pressed:
+            if not just and self.window_drag:
+                new = pygame.Vector2(self.window.position) + pygame.mouse.get_pos()
+                prev = pygame.Vector2(self.window.position)
+                self.window.position = (
+                    self.drag_press_pos
+                    + (new - self.drag_press_pos)
+                    - self.drag_rel_pos
+                )
+                if (prev - self.window.position).length() != 0:
+                    self.window_drag_effective = True
+        else:
+            if self.window_drag and self.window_drag_effective:
+                self.window_stop_special = True
+            self.window_drag = False
+            self.window_drag_effective = False
+
     def ui(self):
         self.mili.rect({"color": (BG_CV,) * 3, "border_radius": 0})
-        self.ui_bg_effect()
-
-        if self.view_state == "list":
-            self.list_viewer.ui()
-        elif self.view_state == "playlist":
-            self.playlist_viewer.ui()
-
-        if self.modal_state == "settings":
-            self.settings.ui()
-        if self.modal_state == "history":
-            self.history.ui()
-
-        self.music_controls.ui()
-
-        if self.menu_open:
-            self.ui_menu()
-
-        if (
-            self.playlist_viewer.modal_state == "none"
-            and self.list_viewer.modal_state == "none"
-            and self.modal_state == "none"
-        ):
-            self.ui_overlay_btn(
-                self.anim_settings, self.open_settings, self.settings_image, "bottom"
+        if self.custom_title:
+            self.mili.rect(
+                {
+                    "color": (BORDER_CV,) * 3,
+                    "outline": 1,
+                    "draw_above": True,
+                    "border_radius": 0,
+                }
             )
+            self.ui_bg_effect()
 
-        self.ui_overlay_top_btn(
-            self.anim_quit,
-            self.quit,
-            self.close_image,  # ([("-20", "-20"), ("20", "20")], [("-20", "20"), ("20", "-20")]),
-            "right",
-        )
+        self.ui_top()
+
+        with self.mili.begin(None, {"fillx": True, "filly": True} | mili.PADLESS):
+            if self.view_state == "list":
+                self.list_viewer.ui()
+            elif self.view_state == "playlist":
+                self.playlist_viewer.ui()
+
+            if self.modal_state == "settings":
+                self.settings.ui()
+            if self.modal_state == "history":
+                self.history.ui()
+
+            self.music_controls.ui()
+
+            if self.menu_open:
+                self.ui_menu()
+
+            if (
+                self.playlist_viewer.modal_state == "none"
+                and self.list_viewer.modal_state == "none"
+                and self.modal_state == "none"
+            ):
+                self.ui_overlay_btn(
+                    self.anim_settings,
+                    self.open_settings,
+                    self.settings_image,
+                    "bottom",
+                )
+
+    def ui_top(self):
+        if self.custom_title:
+            with self.mili.begin(
+                (0, 0, 0, self.tbarh), {"fillx": True, "blocking": False}
+            ) as titlebar:
+                self.tbar_id = titlebar.id
+                self.mili.rect({"border_radius": 0, "color": (BORDER_CV / 8,) * 3})
+
+                self.ui_overlay_top_btn(
+                    self.anims[0],
+                    self.quit,
+                    self.close_image,  # ([("-20", "-20"), ("20", "20")], [("-20", "20"), ("20", "-20")]),
+                    "right",
+                )
+                self.ui_overlay_top_btn(
+                    self.anims[1],
+                    self.action_maximize,
+                    self.maximize_image,
+                    "right",
+                    1,
+                )
+                self.ui_overlay_top_btn(
+                    self.anims[2],
+                    self.action_minimize,
+                    self.minimize_image,
+                    "right",
+                    2,
+                )
+                self.ui_overlay_top_btn(
+                    self.anims[3],
+                    self.toggle_custom_title,
+                    self.resize_image,
+                    "right",
+                    3,
+                )
+                if self.view_state == "playlist":
+                    self.playlist_viewer.ui_top_buttons()
+                elif self.view_state == "list":
+                    self.list_viewer.ui_top_buttons()
+        else:
+            self.ui_overlay_top_btn(
+                self.anims[0],
+                self.quit,
+                self.close_image,
+                "right",
+            )
+            if self.view_state == "playlist":
+                self.playlist_viewer.ui_top_buttons()
+            elif self.view_state == "list":
+                self.list_viewer.ui_top_buttons()
 
     def ui_bg_effect(self):
         if not self.bg_effect:
@@ -396,6 +614,7 @@ class MusicPlayerApp(mili.GenericApp):
                 bottomright=(
                     self.window.size[0] - offset * 1.2,
                     self.window.size[1]
+                    - self.tbarh
                     - offset
                     - self.music_controls.cont_height
                     - {
@@ -429,29 +648,40 @@ class MusicPlayerApp(mili.GenericApp):
                 on_action()
                 anim.goto_a()
 
-    def ui_overlay_top_btn(self, anim, on_action, line_points_or_image, side):
-        y = self.mili.text_size("Music Player", {"size": self.mult(35)}).y
-        size = self.mult(40)
-        offset = self.mult(10)
+    def ui_overlay_top_btn(self, anim, on_action, line_points_or_image, side, sidei=0):
+        if self.custom_title:
+            size = self.tbarh
+        else:
+            y = self.mili.text_size("Music Player", {"size": self.mult(35)}).y
+            size = self.mult(36)
+            offset = self.mult(10)
         if it := self.mili.element(
             pygame.Rect(0, 0, size, size).move_to(
                 topleft=(
-                    offset,
-                    y / 2 - size / 2 + 5,
+                    0,
+                    0,
                 )
+                if self.custom_title
+                else (offset, y / 2 - size / 2 + 5)
             )
             if side == "left"
             else pygame.Rect(0, 0, size, size).move_to(
-                topright=(
+                topright=(self.window.size[0] - (size * sidei), 0)
+                if self.custom_title
+                else (
                     self.window.size[0]
                     - (offset if side == "right" else offset * 2 + size),
                     y / 2 - size / 2 + 5,
                 )
             ),
-            {"ignore_grid": True, "clip_draw": False, "z": 9999},
+            {
+                "ignore_grid": True,
+                "clip_draw": False,
+                "z": 9999,
+            },
         ):
             self.mili.rect(
-                {"color": (cond(self, it, *OVERLAY_CV),) * 3, "border_radius": 0}
+                {"color": (cond(self, it, *TOPB_CV),) * 3, "border_radius": 0}
                 | mili.style.same(int(anim.value), "padx", "pady")
             )
             if isinstance(line_points_or_image, pygame.Surface):
@@ -519,7 +749,30 @@ class MusicPlayerApp(mili.GenericApp):
     def mult(self, size):
         return max(1, int(size * self.ui_mult))
 
+    def action_maximize(self):
+        if self.maximized:
+            self.window.position = self.before_maximize_data[0]
+            self.window.size = self.before_maximize_data[1]
+            self.maximized = False
+        else:
+            self.before_maximize_data = self.window.position, self.window.size
+            self.window.position = (0, 0)
+            self.window.size = pygame.display.get_desktop_sizes()[0]
+            self.maximized = True
+        self.make_bg_image()
+
+    def action_minimize(self):
+        self.window.minimize()
+
     def can_interact(self):
+        return (
+            self.can_abs_interact()
+            and not self.window_drag
+            and not self.window_resize
+            and not self.window_stop_special
+        )
+
+    def can_abs_interact(self):
         if self.music_controls.minip.window is None:
             return True
         return not self.music_controls.minip.focused and self.focused

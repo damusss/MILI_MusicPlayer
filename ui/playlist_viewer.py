@@ -69,6 +69,11 @@ class PlaylistViewerUI(UIComponent):
         self.playlist = playlist
         self.app.change_state("playlist")
 
+    def ui_top_buttons(self):
+        self.app.ui_overlay_top_btn(
+            self.anim_back, self.back, self.app.back_image, "left"
+        )
+
     def ui(self):
         if self.search_active:
             self.search_entryline.update()
@@ -80,9 +85,6 @@ class PlaylistViewerUI(UIComponent):
         self.ui_container()
 
         if self.modal_state == "none" and self.app.modal_state == "none":
-            self.app.ui_overlay_top_btn(
-                self.anim_back, self.back, self.app.back_image, "left"
-            )
             self.app.ui_overlay_btn(
                 self.anim_add_music,
                 self.action_add_music,
@@ -241,7 +243,7 @@ class PlaylistViewerUI(UIComponent):
             pygame.Rect(0, 0, size, size).move_to(
                 center=(
                     self.app.window.size[0] / 2,
-                    self.app.window.size[1] / 2,
+                    (self.app.window.size[1] - self.app.tbarh) / 2,
                 )
             ),
             {

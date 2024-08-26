@@ -41,7 +41,6 @@ class MiniplayerUI:
             image={"smoothscale": True},
         )
 
-        self.resize_image = load_icon("resize")
         self.borderless_image = load_icon("borderless")
         self.back_image = pygame.transform.flip(load_icon("opennew"), True, False)
 
@@ -186,7 +185,7 @@ class MiniplayerUI:
             if self.window is None:
                 return
             self.ui_top_btn(
-                self.resize_image if not self.canresize else self.borderless_image,
+                self.app.resize_image if not self.canresize else self.borderless_image,
                 "rightleft",
                 self.action_toggle_border,
             )

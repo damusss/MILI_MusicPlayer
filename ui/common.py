@@ -20,6 +20,8 @@ ANIMSPEED = 50
 ANIMEASE = mili.animation.EaseIn()
 MUSIC_ENDEVENT = pygame.event.custom_type()
 HISTORY_LEN = 100
+RESIZESIZE = 3
+WIN_MIN_SIZE = (200, 300)
 
 BG_CV = 3
 MUSIC_CV = 3, 10, 5
@@ -36,6 +38,8 @@ LISTM_CV = 20, 25, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
 ALPHA = 120
+BORDER_CV = 120
+TOPB_CV = 15, 25, 10
 
 
 def cond(app, it, normal, hover, press):
@@ -79,15 +83,63 @@ def animation(value):
     )
 
 
-def load_cover_async_OLD(path, key, storage):
-    storage[key] = pygame.image.load(path).convert()
-
-
 def load_cover_async(path, obj):
     obj.cover = pygame.image.load(path).convert()
 
 
 class NotCached: ...
+
+
+class ResizeHandle:
+    def __init__(self, app: "MusicPlayerApp", name, corner, axis, move_window, cursor):
+        self.app = app
+        self.name = name
+        self.corner = corner
+        self.axis = axis
+        self.axis_lock = "x" if self.axis == "y" else "y" if self.axis == "x" else None
+        self.move_window = move_window
+        self.cursor = cursor
+
+    def make_rect(self):
+        if self.corner:
+            rect = pygame.Rect(0, 0, RESIZESIZE * 2, RESIZESIZE * 2)
+        else:
+            rect = pygame.Rect(
+                0,
+                0,
+                self.app.window.size[0] if self.axis == "x" else RESIZESIZE,
+                self.app.window.size[1] if self.axis == "y" else RESIZESIZE,
+            )
+        if self.name == "topright":
+            rect = rect.move_to(topright=(self.app.window.size[0], 0))
+        elif self.name == "bottomleft" or self.name == "bottom":
+            rect = rect.move_to(bottomleft=(0, self.app.window.size[1]))
+        elif self.name == "bottomright" or self.name == "right":
+            rect = rect.move_to(bottomright=self.app.window.size)
+        self.rect = rect
+
+    def update(self, mpos):
+        rel = mpos - self.app.resize_press_pos
+        posrel = pygame.Vector2()
+        if self.axis_lock == "y":
+            rel.x = 0
+        elif self.axis_lock == "x":
+            rel.y = 0
+        if self.move_window == "x":
+            rel.x *= -1
+            posrel.x = rel.x
+        elif self.move_window == "y":
+            rel.y *= -1
+            posrel.y = rel.y
+        elif self.move_window == "xy":
+            rel.x *= -1
+            rel.y *= -1
+            posrel = rel
+        self.app.window.size += rel
+        self.app.make_bg_image()
+        if posrel.length() != 0:
+            self.app.window.position -= posrel
+        self.app.resize_press_pos = mpos
 
 
 class MusicData:

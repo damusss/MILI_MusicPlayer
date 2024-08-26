@@ -13,10 +13,21 @@ class ListViewerUI(UIComponent):
         self.middle_selected = None
 
         self.anim_add_playlist = animation(-5)
+        self.anim_toggle = animation(-3)
         self.menu_anims = [animation(-4) for i in range(2)]
 
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 8, 3, 3, 0, "y")
+
+    def ui_top_buttons(self):
+        if self.app.custom_title:
+            return
+        self.app.ui_overlay_top_btn(
+            self.anim_toggle,
+            self.app.toggle_custom_title,
+            self.app.resize_image,
+            "left",
+        )
 
     def ui(self):
         self.scrollbar.short_size = self.mult(8)

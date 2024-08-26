@@ -50,7 +50,7 @@ class MusicControlsUI(UIComponent):
         self.cont_height = contheight
         with self.mili.begin(
             pygame.Rect(0, 0, self.app.window.size[0], contheight).move_to(
-                bottomleft=(0, self.app.window.size[1])
+                bottomleft=(0, self.app.window.size[1] - self.app.tbarh)
             ),
             {"axis": "x", "pady": 0},
             get_data=True,
@@ -109,7 +109,10 @@ class MusicControlsUI(UIComponent):
                 "Audio format does not support track positioning",
                 {"color": (150,) * 3, "size": self.mult(18)},
                 pygame.Rect(0, 0, self.app.window.size[0], 0).move_to(
-                    bottomleft=(0, self.app.window.size[1] - self.mult(32))
+                    bottomleft=(
+                        0,
+                        self.app.window.size[1] - self.mult(32) - self.app.tbarh,
+                    )
                 ),
                 {"ignore_grid": True, "parent_id": 0, "z": 9999},
             )
@@ -127,7 +130,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, size.x, size.y).move_to(
                 bottomright=(
                     self.app.window.size[0] - self.mult(8),
-                    self.app.window.size[1] - self.mult(22),
+                    self.app.window.size[1] - self.mult(22) - self.app.tbarh,
                 )
             ),
             {"ignore_grid": True, "z": 9999, "parent_id": 0},
@@ -149,7 +152,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, totalw, 2).move_to(
                 midbottom=(
                     self.app.window.size[0] / 2,
-                    self.app.window.size[1] - self.mult(5),
+                    self.app.window.size[1] - self.mult(6) - self.app.tbarh,
                 )
             ),
             {"ignore_grid": True, "parent_id": 0, "z": 99999},
@@ -160,7 +163,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, totalw, 2).move_to(
                 midbottom=(
                     self.app.window.size[0] / 2,
-                    self.app.window.size[1] - self.mult(5),
+                    self.app.window.size[1] - self.mult(6) - self.app.tbarh,
                 )
             ),
             {"ignore_grid": True, "parent_id": 0, "z": 99999},
@@ -181,7 +184,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, totalw, self.mult(5)).move_to(
                 midbottom=(
                     self.app.window.size[0] / 2,
-                    self.app.window.size[1] - self.mult(10),
+                    self.app.window.size[1] - self.mult(10) - self.app.tbarh,
                 )
             ),
             self.slider.area_style | {"ignore_grid": True, "parent_id": 0, "z": 9999},
@@ -276,7 +279,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, size, size).move_to(
                 center=(
                     self.app.window.size[0] / 2,
-                    self.app.window.size[1] / 2,
+                    (self.app.window.size[1] - self.app.tbarh) / 2,
                 )
             ),
             {
