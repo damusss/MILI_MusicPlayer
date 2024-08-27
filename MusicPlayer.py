@@ -399,7 +399,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.ui_mult = max(0.3, (multx * 0.1 + multy * 1) / 1.1)
 
         if self.custom_title:
-            self.tbarh = 30  # self.mult(30)
+            self.tbarh = 30
             self.tbar_rect = pygame.Rect(0, 0, self.window.size[0], self.tbarh)
         else:
             self.tbarh = 0
@@ -420,13 +420,14 @@ class MusicPlayerApp(mili.GenericApp):
             handle.make_rect()
 
         anyhover = False
-        for handle in self.resize_handles:
-            if handle.rect.collidepoint(mpos):
-                pygame.mouse.set_cursor(handle.cursor)
-                anyhover = True
-                break
-        if not anyhover:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        if not self.window_resize:
+            for handle in self.resize_handles:
+                if handle.rect.collidepoint(mpos):
+                    pygame.mouse.set_cursor(handle.cursor)
+                    anyhover = True
+                    break
+            if not anyhover:
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
         if just:
             for handle in self.resize_handles:
@@ -492,8 +493,7 @@ class MusicPlayerApp(mili.GenericApp):
                     "border_radius": 0,
                 }
             )
-            self.ui_bg_effect()
-
+        self.ui_bg_effect()
         self.ui_top()
 
         with self.mili.begin(None, {"fillx": True, "filly": True} | mili.PADLESS):
@@ -532,10 +532,7 @@ class MusicPlayerApp(mili.GenericApp):
                 self.mili.rect({"border_radius": 0, "color": (BORDER_CV / 8,) * 3})
 
                 self.ui_overlay_top_btn(
-                    self.anims[0],
-                    self.quit,
-                    self.close_image,
-                    "right",
+                    self.anims[0], self.quit, self.close_image, "right", red=True
                 )
                 self.ui_overlay_top_btn(
                     self.anims[1],
@@ -608,10 +605,15 @@ class MusicPlayerApp(mili.GenericApp):
     def ui_overlay_btn(self, anim, on_action, line_points_or_image, side="bottom"):
         size = self.mult(55)
         offset = self.mult(8)
+        xoffset = offset * 0.8
+        if (self.view_state == "list" and self.list_viewer.scrollbar.needed) or (
+            self.view_state == "playlist" and self.playlist_viewer.scrollbar.needed
+        ):
+            xoffset = offset * 1.5
         if it := self.mili.element(
             pygame.Rect(0, 0, size, size).move_to(
                 bottomright=(
-                    self.window.size[0] - offset * 1.2,
+                    self.window.size[0] - xoffset,
                     self.window.size[1]
                     - self.tbarh
                     - offset
@@ -647,7 +649,9 @@ class MusicPlayerApp(mili.GenericApp):
                 on_action()
                 anim.goto_a()
 
-    def ui_overlay_top_btn(self, anim, on_action, line_points_or_image, side, sidei=0):
+    def ui_overlay_top_btn(
+        self, anim, on_action, line_points_or_image, side, sidei=0, red=False
+    ):
         if self.custom_title:
             size = self.tbarh
         else:
@@ -679,8 +683,17 @@ class MusicPlayerApp(mili.GenericApp):
                 "z": 9999,
             },
         ):
+            if red:
+                color = (TOPB_CV[0],) * 3
+                if self.can_abs_interact():
+                    if it.hovered:
+                        color = (200, 0, 0)
+                    if it.left_pressed:
+                        color = (80, 0, 0)
+            else:
+                color = (cond(self, it, *TOPB_CV),) * 3
             self.mili.rect(
-                {"color": (cond(self, it, *TOPB_CV),) * 3, "border_radius": 0}
+                {"color": color, "border_radius": 0}
                 | mili.style.same(int(anim.value), "padx", "pady")
             )
             if isinstance(line_points_or_image, pygame.Surface):

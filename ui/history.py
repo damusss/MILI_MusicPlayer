@@ -1,14 +1,11 @@
 import mili
 import pygame
-import mili._core
 from ui.common import *
 
 
 class HistoryUI(UIComponent):
     def init(self):
         self.anim_back = animation(-5)
-        # self.anim_handle = animation(-3)
-        # self.anims = [animation(-3) for i in range(4)]
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
 
@@ -95,7 +92,7 @@ class HistoryUI(UIComponent):
                 [("-49.5", 0), ("49.5", 0)],
                 {"color": (120,) * 3, "size": self.mult(2)},
                 (0, 0, 0, self.mult(2)),
-                {"fillx": True},
+                {"fillx": True, "blocking": False},
                 get_data=True,
             )
             w = (data.rect.w) * (history.position / history.duration)
@@ -103,7 +100,7 @@ class HistoryUI(UIComponent):
                 [("-49.5", 0), ("49.5", 0)],
                 {"color": "red", "size": self.mult(2)},
                 (data.rect.topleft, (w, data.rect.h)),
-                {"ignore_grid": True},
+                {"ignore_grid": True, "blocking": False},
             )
 
     def ui_history_title(self, history):
@@ -111,7 +108,8 @@ class HistoryUI(UIComponent):
         if cover is None:
             cover = self.app.music_cover_image
         with self.mili.begin(
-            None, {"resizey": True, "fillx": True} | mili.PADLESS | mili.X
+            None,
+            {"resizey": True, "fillx": True, "blocking": False} | mili.PADLESS | mili.X,
         ):
             if cover is not None:
                 self.mili.image_element(

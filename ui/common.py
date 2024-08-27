@@ -25,7 +25,7 @@ WIN_MIN_SIZE = (200, 300)
 
 BG_CV = 3
 MUSIC_CV = 3, 10, 5
-LIST_CV = MUSIC_CV  # 10, 20, 5
+LIST_CV = MUSIC_CV
 OVERLAY_CV = 30, 50, 20
 SBAR_CV = 7
 SHANDLE_CV = 15, 20, 10
@@ -39,7 +39,7 @@ MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
 ALPHA = 120
 BORDER_CV = 120
-TOPB_CV = 15, 25, 10
+TOPB_CV = 15, 25, 8
 
 
 def cond(app, it, normal, hover, press):
