@@ -408,6 +408,7 @@ class MusicControlsUI(UIComponent):
         else:
             pygame.mixer.music.pause()
             self.app.music_paused = True
+        self.app.discord_presence.update()
 
     def action_skip_next(self, stop_if_end=False, consider_loop=False):
         if len(self.app.music.playlist.musiclist) <= 0:

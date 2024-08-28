@@ -1,5 +1,6 @@
 import sys
 import mili
+import time
 import pygame
 import pathlib
 import faulthandler
@@ -12,7 +13,10 @@ from health_check import main as health_check
 from ui.music_controls import MusicControlsUI
 from ui.playlist_viewer import PlaylistViewerUI
 
-faulthandler.enable()
+try:
+    faulthandler.enable()
+except RuntimeError:
+    ...
 
 
 if "win" in sys.platform or os.name == "nt":
@@ -24,47 +28,81 @@ if "win" in sys.platform or os.name == "nt":
 
 class MusicPlayerApp(mili.GenericApp):
     def __init__(self):
+        self.init_pygame()
+        self.init_attributes()
+        self.init_data_folder_check()
+        self.init_load_icons()
+        self.init_load_settings()
+        self.init_loading_screen()
+        self.init_load_data()
+        self.init_mili_settings()
+        self.init_sld2()
+        self.init_try_set_icon_mac()
+        self.make_bg_image()
+        health_check()
+
+    def init_pygame(self):
         pygame.mixer.pre_init(buffer=2048)
         pygame.mixer.init(buffer=2048)
         pygame.font.init()
         super().__init__(
             pygame.Window(
                 "Music Player",
-                (PREFERRED_SIZES[0], PREFERRED_SIZES[1]),
+                PREFERRED_SIZES,
                 resizable=True,
                 borderless=True,
             )
         )
         self.window.minimum_size = WIN_MIN_SIZE
-        self.start_style = mili.PADLESS | {"spacing": 0}
-        self.user_framerate = 60
 
+    def init_attributes(self):
+        # components
         self.playlist_viewer = PlaylistViewerUI(self)
         self.list_viewer = ListViewerUI(self)
         self.music_controls = MusicControlsUI(self)
         self.settings = SettingsUI(self)
         self.history = HistoryUI(self)
-
+        self.discord_presence = DiscordPresence(self)
+        # settings
+        self.user_framerate = 60
+        self.volume = 1
+        self.loops = True
+        self.shuffle = False
+        self.custom_title = True
+        # status
+        self.start_style = mili.PADLESS | {"spacing": 0}
+        self.start_time = time.time()
+        self.vol_before_mute = 1
         self.view_state = "list"
         self.modal_state = "none"
         self.playlists: list[Playlist] = []
         self.history_data: list[HistoryData] = []
-        self.volume = 1
-        self.loops = True
-        self.shuffle = False
-        self.vol_before_mute = 1
-        self.ui_mult = 1
+        self.before_maximize_data = None
+        self.maximized = False
         self.focused = True
+        self.ui_mult = 1
+        # be effect/mili
         self.bg_effect_image = None
         self.bg_black_image = None
         self.bg_effect = False
         self.bg_cache = mili.ImageCache()
         self.anims = [animation(-3) for i in range(4)]
         self.anim_settings = animation(-5)
+        # menu
         self.menu_open = False
         self.menu_data: Playlist | pathlib.Path = None
         self.menu_buttons = None
         self.menu_pos = None
+        # music
+        self.music: MusicData = None
+        self.music_paused = False
+        self.music_index = -1
+        self.music_play_time = 0
+        self.music_play_offset = 0
+        self.music_loops = False
+        self.music_videoclip = None
+        self.music_start_time = None
+        # custom title
         self.tbarh = 0
         self.tbar_rect = pygame.Rect()
         self.drag_rel_pos = pygame.Vector2()
@@ -75,9 +113,6 @@ class MusicPlayerApp(mili.GenericApp):
         self.window_drag_effective = False
         self.resize_handle = None
         self.resize_press_pos = pygame.Vector2()
-        self.before_maximize_data = None
-        self.maximized = False
-        self.custom_title = True
         self.resize_handles = [
             ResizeHandle(
                 self, "topleft", True, None, "xy", pygame.SYSTEM_CURSOR_SIZENWSE
@@ -96,25 +131,6 @@ class MusicPlayerApp(mili.GenericApp):
             ResizeHandle(self, "bottom", False, "x", None, pygame.SYSTEM_CURSOR_SIZENS),
             ResizeHandle(self, "right", False, "y", None, pygame.SYSTEM_CURSOR_SIZEWE),
         ]
-
-        self.music: MusicData = None
-        self.music_paused = False
-        self.music_index = -1
-        self.music_play_time = 0
-        self.music_play_offset = 0
-        self.music_loops = False
-        self.music_videoclip = None
-
-        self.init_data_folder_check()
-        self.init_load_icons()
-        self.init_load_settings()
-        self.init_loading_screen()
-        self.init_load_data()
-        self.init_mili_settings()
-        self.init_sld2()
-        self.init_try_set_icon_mac()
-        self.make_bg_image()
-        health_check()
 
     def init_load_icons(self):
         self.close_image = load_icon("close")
@@ -179,6 +195,7 @@ class MusicPlayerApp(mili.GenericApp):
         custom_title = True
         win_pos = self.window.position
         win_size = self.window.size
+        discord_presence = False
         try:
             data = load_json(
                 "data/settings.json",
@@ -190,15 +207,17 @@ class MusicPlayerApp(mili.GenericApp):
                     "custom_title": True,
                     "win_pos": win_pos,
                     "win_size": win_size,
+                    "discord_presence": discord_presence,
                 },
             )
-            self.volume = data["volume"]
-            self.loops = data["loops"]
-            self.shuffle = data["shuffle"]
-            self.user_framerate = data["fps"]
-            custom_title = data["custom_title"]
-            win_pos = data["win_pos"]
-            win_size = data["win_size"]
+            self.volume = data.get("volume", 1)
+            self.loops = data.get("loops", True)
+            self.shuffle = data.get("shuffle", False)
+            self.user_framerate = data.get("fps", 60)
+            custom_title = data.get("custom_title", True)
+            win_pos = data.get("win_pos", win_pos)
+            win_size = data.get("win_size", win_size)
+            discord_presence = data.get("discord_presence", False)
         except Exception:
             pass
         self.target_framerate = self.user_framerate
@@ -208,6 +227,8 @@ class MusicPlayerApp(mili.GenericApp):
             self.window.size = win_size
         if not custom_title:
             self.toggle_custom_title()
+        if discord_presence:
+            self.discord_presence.start()
 
     def init_data_folder_check(self):
         if not os.path.exists("data"):
@@ -266,21 +287,13 @@ class MusicPlayerApp(mili.GenericApp):
 
     def toggle_custom_title(self):
         if self.custom_title:
-            borderless = False
             self.custom_title = False
+            self.window.borderless = False
+            self.window.resizable = True
         else:
-            borderless = True
             self.custom_title = True
-        self.window = pygame.Window(
-            self.window.title,
-            self.window.size,
-            self.window.position,
-            resizable=True,
-            borderless=borderless,
-        )
-        self.window.minimum_size = WIN_MIN_SIZE
-        self.window.set_icon(self.playlist_cover)
-        self.mili.set_canva(self.window.get_surface())
+            self.window.borderless = True
+            self.window.resizable = True
 
     def get_music_pos(self):
         return (
@@ -305,6 +318,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_paused = False
         self.music_index = idx
         self.music_play_time = pygame.time.get_ticks()
+        self.music_start_time = time.time()
         self.music_play_offset = 0
         if self.music.duration is NotCached:
             self.music.cache_duration()
@@ -325,6 +339,7 @@ class MusicPlayerApp(mili.GenericApp):
         pygame.mixer.music.play(0)
         pygame.mixer.music.set_endevent(MUSIC_ENDEVENT)
         pygame.mixer.music.set_volume(self.volume)
+        self.discord_presence.update()
 
     def end_music(self):
         if self.music is not None:
@@ -338,6 +353,7 @@ class MusicPlayerApp(mili.GenericApp):
         if self.music_videoclip is not None:
             self.music_videoclip.close()
         self.music_videoclip = None
+        self.discord_presence.update()
 
     def on_quit(self):
         if self.music is not None:
@@ -362,6 +378,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "custom_title": self.custom_title,
                 "win_pos": self.window.position,
                 "win_size": self.window.size,
+                "discord_presence": self.discord_presence.active,
             },
         )
         for playlist in self.playlists:
@@ -389,6 +406,8 @@ class MusicPlayerApp(mili.GenericApp):
 
         if self.custom_title:
             self.update_borders()
+        elif self.focused:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
         ratio = self.window.size[0] / self.window.size[1]
         if ratio < 0.45:
@@ -407,6 +426,13 @@ class MusicPlayerApp(mili.GenericApp):
         self.start_style = mili.PADLESS | {"spacing": int(self.ui_mult * 3)}
         mili.animation.update_all()
 
+        if (
+            self.discord_presence.active
+            and pygame.time.get_ticks() - self.discord_presence.last_update
+            >= DISCORD_COOLDOWN
+        ):
+            self.discord_presence.update()
+
     def update_borders(self):
         if not self.can_abs_interact():
             return
@@ -421,6 +447,9 @@ class MusicPlayerApp(mili.GenericApp):
 
         anyhover = False
         if not self.window_resize:
+            if self.tbar_rect.collidepoint(mpos):
+                anyhover = True
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
             for handle in self.resize_handles:
                 if handle.rect.collidepoint(mpos):
                     pygame.mouse.set_cursor(handle.cursor)
@@ -747,6 +776,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.view_state = state
         self.close_menu()
         self.mili._ctx._memory = {}
+        self.discord_presence.update()
 
     def close_menu(self):
         self.menu_open = False

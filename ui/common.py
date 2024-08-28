@@ -22,6 +22,7 @@ MUSIC_ENDEVENT = pygame.event.custom_type()
 HISTORY_LEN = 100
 RESIZESIZE = 3
 WIN_MIN_SIZE = (200, 300)
+DISCORD_COOLDOWN = 20000
 
 BG_CV = 3
 MUSIC_CV = 3, 10, 5
@@ -356,3 +357,78 @@ class UIComponent:
 
     def mult(self, size):
         return max(0, int(size * self.app.ui_mult))
+
+
+class DiscordPresence:
+    def __init__(self, app: "MusicPlayerApp"):
+        self.app = app
+        self.active = False
+        self.last_update = 0
+        try:
+            import pypresence
+
+            self.pypresence = pypresence
+            self.presence = pypresence.Presence("1278352362133782559")
+        except (ImportError, ModuleNotFoundError):
+            self.pypresence = None
+
+    def start(self):
+        if self.pypresence is None:
+            btn = pygame.display.message_box(
+                "Missing pypresence module",
+                "Could not activate the discord presence as the 'pypresence' module is missing. "
+                "Close the application, install the module (`pip install pypresence`) and try again.",
+                "error",
+                None,
+                ("Understood", "Close App"),
+            )
+            if btn == 1:
+                self.app.quit()
+            return
+        self.active = True
+        self.presence.connect()
+        self.update()
+
+    def update(self):
+        self.last_update = pygame.time.get_ticks()
+        if self.pypresence is None:
+            return
+
+        state = "Idle"
+        details = None
+        if self.app.view_state == "playlist":
+            details = f"Playlist: {self.app.playlist_viewer.playlist.name}"
+        start = self.app.start_time
+        small_image = None
+        small_text = None
+
+        if self.app.music is not None:
+            state = f"Listening to: {self.app.music.realstem}"
+            details = f"Playlist: {self.app.music.playlist.name}"
+            start = self.app.music_start_time
+            small_image = "mili_miniplayer_icon"
+            if self.app.music_paused:
+                small_image = "mili_paused_icon"
+                small_text = "Music is paused"
+
+        self.presence.update(
+            state=state,
+            details=details,
+            start=start,
+            large_image="mili_musicplayer_logo",
+            large_text="Music Player is connected to Discord",
+            small_image=small_image,
+            small_text=small_text,
+        )
+
+    def end(self):
+        self.active = False
+        if self.pypresence is None:
+            return
+        self.presence.close()
+
+    def toggle(self):
+        if self.active:
+            self.end()
+        else:
+            self.start()

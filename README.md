@@ -17,6 +17,7 @@ A MILI UI demo featuring a rich music player.<br>
 - Async loading
 - Power saving
 - Optional custom titlebar
+- Rich Discord presence
 
 ### Playlists
 
@@ -65,6 +66,7 @@ You can use the health_check.py script to check for unused files in the data fol
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)
 - `mili-ui` >= 0.9.2 (UI backend)
 - `moviepy` >= 1.0.3 (MP4 converter, audio reader)
+- **[optional]** `pypresence` >= 4.3.0 (discord presence)
 - **[optional]** `PySDL2` >= 0.9.16 (global mouse state backend)
 
 # Codebase Notice

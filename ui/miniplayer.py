@@ -65,35 +65,15 @@ class MiniplayerUI:
         self.canresize = False
         self.focused = True
 
-    def set_borderon(self):
-        self.window = pygame.Window(
-            self.window.title, self.window.size, self.window.position, resizable=True
-        )
-        self.window.always_on_top = True
-        self.window.minimum_size = (100, 100)
-        self.canresize = True
-        self.window.get_surface()
-        self.window.set_icon(self.app.music_cover_image)
-
-    def set_borderoff(self):
-        self.window = pygame.Window(
-            self.window.title,
-            self.window.size,
-            self.window.position,
-            resizable=True,
-            borderless=True,
-        )
-        self.window.always_on_top = True
-        self.window.minimum_size = (100, 100)
-        self.canresize = False
-        self.window.get_surface()
-        self.window.set_icon(self.app.music_cover_image)
-
     def action_toggle_border(self):
         if self.canresize:
-            self.set_borderoff()
+            self.window.borderless = True
+            self.canresize = False
+            self.window.resizable = True
         else:
-            self.set_borderon()
+            self.window.borderless = False
+            self.canresize = True
+            self.window.resizable = True
 
     def close(self):
         self.window.destroy()
@@ -165,6 +145,8 @@ class MiniplayerUI:
 
     def ui(self):
         self.get_hovered()
+        if self.focused:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
 
         wm = self.window.size[0] / MINIP_PREFERRED_SIZES[0]
         hm = self.window.size[1] / MINIP_PREFERRED_SIZES[1]

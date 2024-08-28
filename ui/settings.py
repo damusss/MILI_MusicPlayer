@@ -8,7 +8,7 @@ class SettingsUI(UIComponent):
     def init(self):
         self.anim_close = animation(-5)
         self.anim_handle = animation(-3)
-        self.anims = [animation(-3) for i in range(5)]
+        self.anims = [animation(-3) for i in range(6)]
         self.cache = mili.ImageCache()
         self.slider = mili.Slider(False, True, (10, 10))
 
@@ -20,6 +20,8 @@ class SettingsUI(UIComponent):
         self.fps30_image = load_icon("fps30")
         self.fps60_image = load_icon("fps60")
         self.history_image = load_icon("history")
+        self.discordon_image = load_icon("discordon")
+        self.discordoff_image = load_icon("discordoff")
 
     def ui(self):
         with self.mili.begin(
@@ -51,22 +53,11 @@ class SettingsUI(UIComponent):
 
     def ui_modal_content(self):
         self.mili.text_element("Settings", {"size": self.mult(26)}, None, mili.CENTER)
-        with self.mili.begin(
-            (0, 0, mili.percentage(70, self.app.window.size[0]), 0),
-            mili.X
-            | mili.PADLESS
-            | {"resizey": True, "clip_draw": False, "spacing": self.mult(10)},
-        ):
-            vol_image = self.vol0_image
-            if self.app.volume >= 0.5:
-                vol_image = self.vol1_image
-            elif self.app.volume > 0.05:
-                vol_image = self.vollow_image
-            self.app.ui_image_btn(vol_image, self.action_mute, self.anims[0], 45)
-            self.ui_slider()
-        self.ui_buttons()
+        self.ui_slider()
+        self.ui_buttons_top()
+        self.ui_buttons_bottom()
 
-    def ui_buttons(self):
+    def ui_buttons_top(self):
         with self.mili.begin(
             None,
             {
@@ -75,11 +66,16 @@ class SettingsUI(UIComponent):
                 "axis": "x",
                 "clip_draw": False,
                 "align": "center",
-            },
+            }
+            | mili.PADLESS,
         ):
-            self.app.ui_image_btn(
-                self.history_image, self.action_history, self.anims[1]
-            )
+            vol_image = self.vol0_image
+            if self.app.volume >= 0.5:
+                vol_image = self.vol1_image
+            elif self.app.volume > 0.05:
+                vol_image = self.vollow_image
+            self.app.ui_image_btn(vol_image, self.action_mute, self.anims[0])
+
             self.app.ui_image_btn(
                 self.app.loopon_image if self.app.loops else self.app.loopoff_image,
                 self.action_loop,
@@ -92,12 +88,38 @@ class SettingsUI(UIComponent):
                 self.anims[3],
                 br="50" if not self.app.shuffle else "5",
             )
+
+    def ui_buttons_bottom(self):
+        with self.mili.begin(
+            None,
+            {
+                "resizex": True,
+                "resizey": True,
+                "axis": "x",
+                "clip_draw": False,
+                "align": "center",
+            }
+            | mili.PADLESS,
+        ):
+            self.app.ui_image_btn(
+                self.history_image, self.action_history, self.anims[1]
+            )
             self.app.ui_image_btn(
                 self.fps60_image if self.app.user_framerate == 60 else self.fps30_image,
                 self.action_fps,
                 self.anims[4],
                 br="5",
             )
+            self.app.ui_image_btn(
+                self.discordoff_image
+                if not self.app.discord_presence.active
+                else self.discordon_image,
+                self.action_discord,
+                self.anims[5],
+            )
+
+    def action_discord(self):
+        self.app.discord_presence.toggle()
 
     def action_history(self):
         self.app.modal_state = "history"
@@ -116,7 +138,7 @@ class SettingsUI(UIComponent):
 
         with self.mili.begin(
             (0, 0, 0, self.mult(10)),
-            {"align": "center", "fillx": True} | self.slider.area_style,
+            {"align": "center", "fillx": "94"} | self.slider.area_style,
             get_data=True,
         ) as bar:
             self.slider.update_area(bar)
