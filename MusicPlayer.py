@@ -433,6 +433,12 @@ class MusicPlayerApp(mili.GenericApp):
         ):
             self.discord_presence.update()
 
+        if self.discord_presence.connect_error is not None:
+            self.discord_presence.show_error()
+        else:
+            if self.discord_presence.connecting:
+                self.discord_presence.update_connecting()
+
     def update_borders(self):
         if not self.can_abs_interact():
             return

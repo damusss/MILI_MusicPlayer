@@ -359,15 +359,30 @@ class UIComponent:
         return max(0, int(size * self.app.ui_mult))
 
 
+def discord_presence_connect(presence):
+    try:
+        presence.presence.connect()
+    except presence.pypresence.PyPresenceException as exc:
+        presence.connect_error = str(exc)
+        return
+    presence.presence.update()
+    presence.active = True
+    presence.connecting = False
+
+
 class DiscordPresence:
     def __init__(self, app: "MusicPlayerApp"):
         self.app = app
         self.active = False
         self.last_update = 0
+        self.connect_error = None
+        self.connect_start_time = 0
+        self.connecting = False
         try:
             import pypresence
 
             self.pypresence = pypresence
+            pypresence.PyPresenceException
             self.presence = pypresence.Presence("1278352362133782559")
         except (ImportError, ModuleNotFoundError):
             self.pypresence = None
@@ -385,12 +400,16 @@ class DiscordPresence:
             if btn == 1:
                 self.app.quit()
             return
-        self.active = True
-        self.presence.connect()
-        self.update()
+        self.active = False
+        self.connecting = True
+        self.connect_start_time = pygame.time.get_ticks()
+        thread = threading.Thread(target=discord_presence_connect, args=(self,))
+        thread.start()
 
     def update(self):
         self.last_update = pygame.time.get_ticks()
+        if not self.active:
+            return
         if self.pypresence is None:
             return
 
@@ -420,6 +439,31 @@ class DiscordPresence:
             small_image=small_image,
             small_text=small_text,
         )
+
+    def update_connecting(self):
+        if pygame.time.get_ticks() - self.connect_start_time >= 5000:
+            self.connecting = False
+            self.active = False
+            self.connect_error = None
+            pygame.display.message_box(
+                "Failed to connect to discord",
+                "The connection with discord took too much time. Make sure you have an internet connection and try to connect again.",
+                "error",
+                None,
+                ("Understood",),
+            )
+
+    def show_error(self):
+        pygame.display.message_box(
+            "Failed to connect to discord",
+            f"The module 'pypresence' raised this exception while trying to connect to discord: '{self.connect_error}'. "
+            "Make sure discord is open and that you have internet and try to connect again.",
+            "error",
+            None,
+            ("Understood",),
+        )
+        self.connect_error = None
+        self.connecting = False
 
     def end(self):
         self.active = False
