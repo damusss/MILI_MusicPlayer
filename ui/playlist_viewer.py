@@ -2,6 +2,7 @@ import mili
 import pygame
 import pathlib
 from ui.common import *
+from ui.data import Playlist
 from ui.add_music import AddMusicUI
 from ui.entryline import UIEntryline
 from ui.move_music import MoveMusicUI

@@ -1,6 +1,7 @@
 import mili
 import pygame
 from ui.common import *
+from ui.data import Playlist
 from ui.new_playlist import NewPlaylistUI
 from ui.rename_playlist import RenamePlaylistUI
 

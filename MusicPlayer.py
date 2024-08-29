@@ -12,6 +12,8 @@ from ui.list_viewer import ListViewerUI
 from health_check import main as health_check
 from ui.music_controls import MusicControlsUI
 from ui.playlist_viewer import PlaylistViewerUI
+from ui.discord_presence import DiscordPresence
+from ui.data import HistoryData, MusicData, Playlist, ResizeHandle, NotCached
 
 try:
     faulthandler.enable()

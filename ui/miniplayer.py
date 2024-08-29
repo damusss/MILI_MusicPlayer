@@ -4,11 +4,6 @@ import typing
 import ctypes
 from ui.common import *
 
-if typing.TYPE_CHECKING:
-    from MusicPlayer import MusicPlayerApp
-
-MINIP_PREFERRED_SIZES = 200, 200
-
 
 class MiniplayerUI:
     def __init__(self, app: "MusicPlayerApp"):

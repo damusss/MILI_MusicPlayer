@@ -1,6 +1,7 @@
 import mili
 import pygame
 from ui.common import *
+from ui.data import HistoryData
 
 
 class HistoryUI(UIComponent):
