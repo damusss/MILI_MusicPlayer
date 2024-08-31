@@ -4,7 +4,9 @@ import time
 import pygame
 import pathlib
 import faulthandler
+
 pygame.mixer.pre_init(buffer=2048)
+
 from ui.common import *
 import moviepy.editor as moviepy
 from ui.history import HistoryUI
@@ -113,8 +115,10 @@ class MusicPlayerApp(mili.GenericApp):
         self.window_resize = False
         self.window_stop_special = False
         self.window_drag_effective = False
+        self.resize_gmpos = None
+        self.resize_winsize = None
+        self.resize_winpos = None
         self.resize_handle = None
-        self.resize_press_pos = pygame.Vector2()
         self.resize_handles = [
             ResizeHandle(
                 self, "topleft", True, None, "xy", pygame.SYSTEM_CURSOR_SIZENWSE
@@ -471,21 +475,13 @@ class MusicPlayerApp(mili.GenericApp):
                 if handle.rect.collidepoint(mpos):
                     self.window_resize = True
                     self.resize_handle = handle
-                    self.resize_press_pos = mpos
+                    self.resize_gmpos = mpos + self.window.position
+                    self.resize_winpos = self.window.position
+                    self.resize_winsize = self.window.size
                     break
         if pressed:
             if self.window_resize:
                 self.resize_handle.update(mpos)
-        else:
-            if self.window_resize:
-                self.window_stop_special = True
-            self.window_resize = False
-
-        if pressed:
-            if self.window_resize:
-                rel = mpos - self.resize_press_pos
-                self.window.size += rel
-                self.resize_press_pos = mpos
         else:
             if self.window_resize:
                 self.window_stop_special = True
@@ -838,6 +834,12 @@ class MusicPlayerApp(mili.GenericApp):
             )
 
     def event(self, event):
+        if (
+            event.type == pygame.KEYDOWN
+            and event.key == pygame.K_q
+            and event.mod & pygame.KMOD_CTRL
+        ):
+            self.quit()
         if event.type == pygame.WINDOWFOCUSGAINED and event.window == self.window:
             self.focused = True
         if event.type == pygame.WINDOWFOCUSLOST and event.window == self.window:

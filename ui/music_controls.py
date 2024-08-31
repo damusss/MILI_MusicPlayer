@@ -21,6 +21,11 @@ class MusicControlsUI(UIComponent):
         self.black_cache = mili.ImageCache()
         self.music_videoclip_cover = None
         self.last_videoclip_cover = None
+        self.timebar_controlled = False
+        self.timebar_pos = None
+        self.handle_percentage = None
+        self.big_cover = False
+        self.bigcover_time = 0
 
         self.play_image = load_icon("play")
         self.pause_image = load_icon("pause")
@@ -61,6 +66,16 @@ class MusicControlsUI(UIComponent):
         self.ui_track_control()
 
         if bigcover:
+            if not self.big_cover:
+                self.big_cover = True
+                self.bigcover_time = pygame.time.get_ticks()
+        else:
+            self.big_cover = False
+
+        if (
+            bigcover
+            and pygame.time.get_ticks() - self.bigcover_time >= BIG_COVER_COOLDOWN
+        ):
             self.ui_big_cover()
 
         self.minip.run()
@@ -174,10 +189,15 @@ class MusicControlsUI(UIComponent):
         totalw = self.app.window.size[0] - self.mult(15)
         pos = self.app.get_music_pos()
         percentage = (pos) / self.app.music.duration
+        if self.timebar_pos is not None:
+            percentage = self.timebar_pos
 
-        if percentage > 1.01:
+        if percentage > 1.01 and self.timebar_pos is None:
             self.music_auto_finish()
             return
+
+        if self.handle_percentage is not None:
+            percentage = self.handle_percentage
 
         sizeperc = totalw * min(1, percentage)
         with self.mili.begin(
@@ -199,20 +219,52 @@ class MusicControlsUI(UIComponent):
                 {"ignore_grid": True},
             )
 
-            if handle := self.mili.element(
-                self.slider.handle_rect.move(0, self.slider.handle_size[1] / 17),
-                self.slider.handle_style | {"z": 99999},
-            ):
-                self.slider.update_handle(handle)
-                self.mili.rect(
-                    {
-                        "color": (255,) * 3,
-                        "border_radius": "50",
-                        "padx": str(75 + self.handle_anim.value),
-                        "pady": str(75 + self.handle_anim.value),
-                    }
-                )
+            handle = self.ui_slider_handle(percentage)
+            mpressed = pygame.mouse.get_pressed()[0]
+            if not self.timebar_controlled:
+                if (
+                    not handle.absolute_hover
+                    and self.app.can_interact()
+                    and sbar.absolute_hover
+                    and mpressed
+                ):
+                    self.timebar_controlled = True
+                    self.handle_anim.goto_b()
+            else:
+                if not mpressed:
+                    self.timebar_controlled = False
+                    if self.timebar_pos is not None:
+                        pygame.mixer.music.set_pos(
+                            self.timebar_pos * self.app.music.duration
+                        )
+                        self.app.music_play_time = pygame.time.get_ticks()
+                        self.app.music_play_offset = (
+                            self.timebar_pos * self.app.music.duration
+                        )
+                    self.timebar_pos = None
 
+            if self.timebar_controlled:
+                mposx = pygame.mouse.get_pos()[0]
+                relmpos = mposx - sbar.absolute_rect.x
+                newpos = pygame.math.clamp(relmpos / sbar.absolute_rect.w, 0, 1)
+                self.timebar_pos = newpos
+                self.slider.valuex = newpos
+
+    def ui_slider_handle(self, percentage):
+        if handle := self.mili.element(
+            self.slider.handle_rect.move(0, self.slider.handle_size[1] / 17),
+            self.slider.handle_style | {"z": 99999},
+        ):
+            self.slider.update_handle(handle)
+            self.mili.rect(
+                {
+                    "color": (255,) * 3,
+                    "border_radius": "50",
+                    "padx": str(75 + self.handle_anim.value),
+                    "pady": str(75 + self.handle_anim.value),
+                }
+            )
+            if not self.timebar_controlled:
                 if handle.left_just_released and self.app.can_interact():
                     pygame.mixer.music.set_pos(
                         self.slider.valuex * self.app.music.duration
@@ -221,13 +273,16 @@ class MusicControlsUI(UIComponent):
                     self.app.music_play_offset = (
                         self.slider.valuex * self.app.music.duration
                     )
-                    percentage = (pos) / self.app.music.duration
                 if not handle.left_pressed:
                     self.slider.valuex = percentage
+                    self.handle_percentage = None
+                else:
+                    self.handle_percentage = self.slider.valuex
                 if handle.just_hovered and self.app.can_interact():
                     self.handle_anim.goto_b()
                 if handle.just_unhovered:
                     self.handle_anim.goto_a()
+        return handle
 
     def ui_controls_cont(self):
         with self.mili.begin(
@@ -369,6 +424,9 @@ class MusicControlsUI(UIComponent):
                 self.app.music_play_offset
                 + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
             )
+            if pos >= self.app.music.duration:
+                self.music_videoclip_cover = SURF
+                return
             frame = self.app.music_videoclip.get_frame(pos)
             self.music_videoclip_cover = pygame.image.frombytes(
                 frame.tobytes(), self.app.music_videoclip.size, "RGB"

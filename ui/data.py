@@ -42,7 +42,7 @@ class ResizeHandle:
         self.rect = rect
 
     def update(self, mpos):
-        rel = mpos - self.app.resize_press_pos
+        rel = self.app.window.position + mpos - self.app.resize_gmpos
         posrel = pygame.Vector2()
         if self.axis_lock == "y":
             rel.x = 0
@@ -58,11 +58,10 @@ class ResizeHandle:
             rel.x *= -1
             rel.y *= -1
             posrel = rel
-        self.app.window.size += rel
-        self.app.make_bg_image()
+        self.app.window.size = self.app.resize_winsize + rel
         if posrel.length() != 0:
-            self.app.window.position -= posrel
-        self.app.resize_press_pos = mpos
+            self.app.window.position = self.app.resize_winpos - posrel
+        self.app.make_bg_image()
 
 
 class MusicData:

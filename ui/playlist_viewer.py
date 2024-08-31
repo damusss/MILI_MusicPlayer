@@ -21,6 +21,8 @@ class PlaylistViewerUI(UIComponent):
         self.middle_selected = None
         self.search_active = False
         self.search_entryline = UIEntryline("Enter search...", False)
+        self.big_cover = False
+        self.big_cover_time = 0
 
         self.add_music = AddMusicUI(self.app)
         self.change_cover = ChangeCoverUI(self.app)
@@ -85,6 +87,11 @@ class PlaylistViewerUI(UIComponent):
             self.back()
 
         big_cover = self.ui_title()
+        if big_cover and not self.big_cover:
+            self.big_cover = True
+            self.big_cover_time = pygame.time.get_ticks()
+        if not big_cover:
+            self.big_cover = False
         self.ui_container()
 
         if self.modal_state == "none" and self.app.modal_state == "none":
@@ -112,7 +119,10 @@ class PlaylistViewerUI(UIComponent):
         elif self.modal_state == "rename":
             self.rename_music.ui()
 
-        if big_cover:
+        if (
+            big_cover
+            and pygame.time.get_ticks() - self.big_cover_time >= BIG_COVER_COOLDOWN
+        ):
             self.ui_big_cover()
 
     def ui_container(self):

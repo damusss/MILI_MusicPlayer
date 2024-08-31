@@ -11,6 +11,7 @@ class SettingsUI(UIComponent):
         self.anims = [animation(-3) for i in range(6)]
         self.cache = mili.ImageCache()
         self.slider = mili.Slider(False, True, (10, 10))
+        self.bar_controlled = False
 
         self.vol0_image = load_icon("vol0")
         self.vol1_image = load_icon("vol1")
@@ -150,18 +151,41 @@ class SettingsUI(UIComponent):
                     (0, 0, bar.rect.w * self.app.volume, bar.rect.h),
                     {"ignore_grid": True},
                 )
+            handle = self.ui_slider_handle()
+            mpressed = pygame.mouse.get_pressed()[0]
+            if not self.bar_controlled:
+                if (
+                    not handle.absolute_hover
+                    and self.app.can_interact()
+                    and bar.absolute_hover
+                    and mpressed
+                ):
+                    self.bar_controlled = True
+                    self.anim_handle.goto_b()
+            else:
+                if not mpressed:
+                    self.bar_controlled = False
 
-            if handle := self.mili.element(
-                self.slider.handle_rect.move(0, self.slider.handle_rect.h / 8),
-                self.slider.handle_style,
-            ):
-                self.slider.update_handle(handle)
-                self.mili.circle(
-                    {"color": (255,) * 3}
-                    | mili.style.same(
-                        self.mult(12 + self.anim_handle.value), "padx", "pady"
-                    )
+            if self.bar_controlled:
+                mposx = pygame.mouse.get_pos()[0]
+                relmpos = mposx - bar.absolute_rect.x
+                volume = pygame.math.clamp(relmpos / bar.absolute_rect.w, 0, 1)
+                self.change_volume(volume)
+                self.slider.valuex = volume
+
+    def ui_slider_handle(self):
+        if handle := self.mili.element(
+            self.slider.handle_rect.move(0, self.slider.handle_rect.h / 8),
+            self.slider.handle_style,
+        ):
+            self.slider.update_handle(handle)
+            self.mili.circle(
+                {"color": (255,) * 3}
+                | mili.style.same(
+                    self.mult(12 + self.anim_handle.value), "padx", "pady"
                 )
+            )
+            if not self.bar_controlled:
                 if handle.just_hovered and self.app.can_interact():
                     self.anim_handle.goto_b()
                 if handle.just_unhovered and not handle.left_pressed:
@@ -176,8 +200,11 @@ class SettingsUI(UIComponent):
                     self.change_volume()
                 else:
                     self.slider.valuex = self.app.volume
+        return handle
 
-    def change_volume(self):
+    def change_volume(self, value=None):
+        if value is None:
+            value = self.slider.valuex
         self.app.volume = self.slider.valuex
         pygame.mixer.music.set_volume(self.app.volume)
 

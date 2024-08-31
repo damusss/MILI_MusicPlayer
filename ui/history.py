@@ -7,6 +7,7 @@ from ui.data import HistoryData
 class HistoryUI(UIComponent):
     def init(self):
         self.anim_back = animation(-5)
+        self.anim_clear = animation(-2)
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
 
@@ -43,13 +44,29 @@ class HistoryUI(UIComponent):
             )
 
     def ui_modal_content(self):
-        self.mili.text_element("History", {"size": self.mult(26)}, None, mili.CENTER)
+        with self.mili.begin(
+            None,
+            mili.RESIZE | mili.PADLESS | mili.CENTER | mili.X | {"clip_draw": False},
+        ):
+            self.mili.text_element(
+                "History", {"size": self.mult(26)}, None, mili.CENTER
+            )
+            self.app.ui_image_btn(
+                self.app.delete_image, self.action_clear, self.anim_clear, 30
+            )
         with self.mili.begin(
             None, {"fillx": True, "filly": True} | mili.PADLESS, get_data=True
         ) as cont:
             self.scroll.update(cont)
             for history in reversed(self.app.history_data):
                 self.ui_history(history)
+            if len(self.app.history_data) <= 0:
+                self.mili.text_element(
+                    "No music in history",
+                    {"size": self.mult(20), "color": (200,) * 3},
+                    None,
+                    {"align": "center"},
+                )
         self.mili.element((0, 0, 0, self.mult(4)))
 
     def ui_history(self, history: HistoryData):
@@ -73,19 +90,6 @@ class HistoryUI(UIComponent):
 
             if it.left_just_released and self.app.can_interact():
                 self.restore_history(history)
-
-    def restore_history(self, history: HistoryData):
-        self.app.playlist_viewer.enter(history.music.playlist)
-        self.app.play_music(
-            history.music, history.music.playlist.musiclist.index(history.music)
-        )
-        self.app.music_play_offset = history.position
-        pygame.mixer.music.set_pos(history.position)
-        self.app.playlist_viewer.scroll.set_scroll(
-            0, self.app.music_index * (self.app.mult(80) + 3)
-        )
-        self.app.playlist_viewer.scrollbar.scroll_moved()
-        self.app.modal_state = "none"
 
     def ui_history_time(self, history):
         if history.music.pos_supported:
@@ -132,6 +136,22 @@ class HistoryUI(UIComponent):
                 (0, 0, 0, self.mult(60)),
                 {"align": "first", "blocking": False, "fillx": True},
             )
+
+    def restore_history(self, history: HistoryData):
+        self.app.playlist_viewer.enter(history.music.playlist)
+        self.app.play_music(
+            history.music, history.music.playlist.musiclist.index(history.music)
+        )
+        self.app.music_play_offset = history.position
+        pygame.mixer.music.set_pos(history.position)
+        self.app.playlist_viewer.scroll.set_scroll(
+            0, self.app.music_index * (self.app.mult(80) + 3)
+        )
+        self.app.playlist_viewer.scrollbar.scroll_moved()
+        self.app.modal_state = "none"
+
+    def action_clear(self):
+        self.app.history_data = []
 
     def back(self):
         self.app.modal_state = "settings"
