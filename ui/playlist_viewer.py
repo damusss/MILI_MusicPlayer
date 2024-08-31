@@ -1,8 +1,7 @@
 import mili
 import pygame
-import pathlib
 from ui.common import *
-from ui.data import Playlist
+from ui.data import Playlist, MusicData
 from ui.add_music import AddMusicUI
 from ui.entryline import UIEntryline
 from ui.move_music import MoveMusicUI
@@ -266,7 +265,7 @@ class PlaylistViewerUI(UIComponent):
             {"align": "center"},
         )
 
-    def ui_music(self, music, idx, posi):
+    def ui_music(self, music: MusicData, idx, posi):
         predicted_pos = posi * (self.mult(80) + 3) + self.scroll.get_offset()[1]
         if predicted_pos > self.app.window.size[1]:
             return True
@@ -282,7 +281,6 @@ class PlaylistViewerUI(UIComponent):
             },
         ) as cont:
             self.ui_music_bg(music.audiopath, cont)
-            opath: pathlib.Path = music.realpath
             imagesize = 0
             cover = music.cover_or(self.app.music_cover_image)
             if cover is None:
@@ -296,7 +294,7 @@ class PlaylistViewerUI(UIComponent):
                     {"align": "center", "blocking": False},
                 )
             self.mili.text_element(
-                opath.name,
+                music.realstem,
                 {
                     "size": self.mult(18),
                     "growx": False,

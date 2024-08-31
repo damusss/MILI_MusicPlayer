@@ -17,9 +17,9 @@ def discord_presence_connect(presence: "DiscordPresence"):
         presence.connect_error = str(exc)
         presence.discord_not_found = False
         return
-    presence.presence.update()
     presence.active = True
     presence.connecting = False
+    presence.last_update = -9999
 
 
 class DiscordPresence:
@@ -51,6 +51,8 @@ class DiscordPresence:
             )
             if btn == 1:
                 self.app.quit()
+            return
+        if self.connecting:
             return
         self.active = False
         self.connecting = True

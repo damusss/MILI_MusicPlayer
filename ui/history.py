@@ -104,7 +104,7 @@ class HistoryUI(UIComponent):
                 {"ignore_grid": True, "blocking": False},
             )
 
-    def ui_history_title(self, history):
+    def ui_history_title(self, history: HistoryData):
         cover = history.music.cover
         if cover is None:
             cover = self.app.music_cover_image
@@ -120,7 +120,7 @@ class HistoryUI(UIComponent):
                     {"align": "center", "blocking": False},
                 )
             self.mili.text_element(
-                history.music.realname,
+                history.music.realstem,
                 {
                     "size": self.mult(16),
                     "growx": False,

@@ -115,8 +115,11 @@ class NewPlaylistUI(UIComponent):
             {
                 "color": "white" if self.selected_folder else (150,) * 3,
                 "size": self.mult(20) if self.selected_folder else self.mult(18),
+                "wraplen": "100",
+                "growx": False,
+                "slow_grow": True,
             },
-            None,
+            (0, 0, mili.percentage(70, self.app.window.size[0]), 0),
             {"align": "center"},
         )
         with self.mili.begin(

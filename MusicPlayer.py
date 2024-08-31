@@ -4,6 +4,7 @@ import time
 import pygame
 import pathlib
 import faulthandler
+pygame.mixer.pre_init(buffer=2048)
 from ui.common import *
 import moviepy.editor as moviepy
 from ui.history import HistoryUI
@@ -44,8 +45,7 @@ class MusicPlayerApp(mili.GenericApp):
         health_check()
 
     def init_pygame(self):
-        pygame.mixer.pre_init(buffer=2048)
-        pygame.mixer.init(buffer=2048)
+        pygame.mixer.init()
         pygame.font.init()
         super().__init__(
             pygame.Window(

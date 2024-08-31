@@ -236,7 +236,7 @@ class MusicControlsUI(UIComponent):
             get_data=True,
         ) as cont:
             txt, txtstyle = (
-                f"{self.app.music.realname}",
+                f"{self.app.music.realstem}",
                 {"size": self.mult(22), "align": "left"},
             )
             size = self.mili.text_size(txt, txtstyle).x
