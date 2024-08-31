@@ -85,6 +85,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.maximized = False
         self.focused = True
         self.ui_mult = 1
+        self.input_stolen = False
         # be effect/mili
         self.bg_effect_image = None
         self.bg_black_image = None
@@ -157,7 +158,10 @@ class MusicPlayerApp(mili.GenericApp):
         self.window.set_icon(self.playlist_cover)
 
     def init_load_data(self):
-        make_data_folders("mp3_from_mp4", "covers", "music_covers")
+        for name in ["mp3_from_mp4", "covers", "music_covers"]:
+            if not os.path.exists(f"data/{name}"):
+                os.mkdir(f"data/{name}")
+
         playlist_data = load_json("data/playlists.json", [])
         write_json("data/playlists_backup.json", playlist_data)
         history_data = load_json("data/history.json", [])
@@ -431,6 +435,7 @@ class MusicPlayerApp(mili.GenericApp):
 
         self.start_style = mili.PADLESS | {"spacing": int(self.ui_mult * 3)}
         mili.animation.update_all()
+        self.input_stolen = False
 
         if (
             self.discord_presence.active

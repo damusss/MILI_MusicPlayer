@@ -25,13 +25,13 @@ class ResizeHandle:
 
     def make_rect(self):
         if self.corner:
-            rect = pygame.Rect(0, 0, RESIZESIZE * 2, RESIZESIZE * 2)
+            rect = pygame.Rect(0, 0, RESIZE_SIZE * 2, RESIZE_SIZE * 2)
         else:
             rect = pygame.Rect(
                 0,
                 0,
-                self.app.window.size[0] if self.axis == "x" else RESIZESIZE,
-                self.app.window.size[1] if self.axis == "y" else RESIZESIZE,
+                self.app.window.size[0] if self.axis == "x" else RESIZE_SIZE,
+                self.app.window.size[1] if self.axis == "y" else RESIZE_SIZE,
             )
         if self.name == "topright":
             rect = rect.move_to(topright=(self.app.window.size[0], 0))

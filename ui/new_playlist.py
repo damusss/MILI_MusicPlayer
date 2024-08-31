@@ -96,7 +96,7 @@ class NewPlaylistUI(UIComponent):
             self.create_type = ctype
 
     def ui_empty_playlist_modal(self):
-        self.entryline.update()
+        self.entryline.update(self.app)
         self.entryline.ui(
             self.mili,
             pygame.Rect(

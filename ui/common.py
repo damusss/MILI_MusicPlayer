@@ -14,11 +14,9 @@ UI_SIZES = (450, 700)
 SURF = pygame.Surface((10, 10), pygame.SRCALPHA)
 FORMATS = ["mp4", "wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
 POS_SUPPORTED = ["mp4", "mp3", "ogg", "flac", "mod"]
-ANIMSPEED = 50
-ANIMEASE = mili.animation.EaseIn()
 MUSIC_ENDEVENT = pygame.event.custom_type()
 HISTORY_LEN = 100
-RESIZESIZE = 3
+RESIZE_SIZE = 3
 WIN_MIN_SIZE = (200, 300)
 DISCORD_COOLDOWN = 20000
 BIG_COVER_COOLDOWN = 300
@@ -67,19 +65,13 @@ def write_json(path, content):
         json.dump(content, file)
 
 
-def make_data_folders(*names):
-    for name in names:
-        if not os.path.exists(f"data/{name}"):
-            os.mkdir(f"data/{name}")
-
-
 def load_icon(name):
     return pygame.image.load(f"data/icons/{name}.png").convert_alpha()
 
 
 def animation(value):
     return mili.animation.ABAnimation(
-        0, value, "number", ANIMSPEED, ANIMSPEED, ANIMEASE
+        0, value, "number", 50, 50, mili.animation.EaseIn()
     )
 
 

@@ -1,57 +1,33 @@
-# Music Player
+# MILI Music Player
 
 A MILI UI demo featuring a rich music player.<br>
 [MILI Github](https://github.com/damusss/mili), [MILI PyPI](https://pypi.org/project/mili-ui/)
 
-## Supported Formats
-
-**Audio and Video**: MP4
-
-**Audio Only**: WAV, MP3, OGG, FLAC, OPUS, WV, MOD, AIFF
-
-**Unsupported Track Positioning**: WAV, OPUS, WV, AIFF
-
 ## Features
 
-- 30/60 FPS
-- Async loading
-- Power saving
-- Optional custom titlebar
+- 30/60 FPS, Power saving, Async loading
+- Custom titlebar/borders
 - Rich Discord presence
-
-### Playlists
-
-- Rename
-- Delete
-- Empty/Load from folder
-- Reorder
-- Reset/Upload/Auto-generate cover
-
-### Musics
-
-- Rename
-- Add/Delete
-- Reorder
-- Change playlist
-- Score-based Search
-
-### Player
-
-- Volume/Mute
-- Play/Pause
-- Next/Previous/Auto-next
-- Music loop
-- Playlist loop
-- Playlist shuffle
-- MP4 Video Player
-- BG Effects
 - History
+- Playlists (load from folder, rename, delete, reorder, upload/generate cover, search)
+- Musics (add, rename, delete, reorder, move to playlist)
 
-### Miniplayer
+  - **Audio and Video**: MP4
+
+  - **Audio Only**: WAV, MP3, OGG, FLAC, OPUS, WV, MOD, AIFF
+
+  - **Unsupported Track Positioning**: WAV, OPUS, WV, AIFF
+
+- Controls
+  - Pause, Volume/mute, Next/previous/auto-next
+  - MP4 Video Player
+  - Background effects
+  - Loop (playlist/music), Shuffle
+  - Miniplayer
 
 # Building/Running
 
-It is advice to run the following commands after configuring a virtual environment.
+It is adviced to run the following commands after configuring a virtual environment.
 Make sure to be in the folder where the main file is located, then:
 
 ```
@@ -59,14 +35,16 @@ pip install -r requirements.txt
 py MusicPlayer.py
 ```
 
-You can use the health_check.py script to check for unused files in the data folder. Use the --remove argument to delete them automatically. The script is also run when the music player starts.
+You can use the `health_check.py` script to check for unused files in the data folder. Use the `--remove` argument to delete them automatically. The script is also run when the music player starts.
+
+User data is not stored in `AppData` or equivalent, rather in the `data/` folder where the main file is in.
 
 # Dependencies
 
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)
-- `mili-ui` >= 0.9.2 (UI backend)
+- `mili-ui` >= 0.9.4 (UI backend)
 - `moviepy` >= 1.0.3 (MP4 converter, audio reader)
-- **[optional]** `pypresence` >= 4.3.0 (discord presence)
+- **[optional]** `pypresence` >= 4.3.0 (Discord presence)
 - **[optional]** `PySDL2` >= 0.9.16 (global mouse state backend)
 
 # Codebase Notice

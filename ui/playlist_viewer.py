@@ -81,7 +81,7 @@ class PlaylistViewerUI(UIComponent):
 
     def ui(self):
         if self.search_active:
-            self.search_entryline.update()
+            self.search_entryline.update(self.app)
         self.scrollbar.short_size = self.mult(8)
         if self.playlist is None:
             self.back()
@@ -256,7 +256,7 @@ class PlaylistViewerUI(UIComponent):
             pygame.Rect(0, 0, size, size).move_to(
                 center=(
                     self.app.window.size[0] / 2,
-                    (self.app.window.size[1] - self.app.tbarh) / 2,
+                    self.app.window.size[1] / 2,
                 )
             ),
             {

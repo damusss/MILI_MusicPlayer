@@ -126,7 +126,7 @@ class MusicControlsUI(UIComponent):
                 pygame.Rect(0, 0, self.app.window.size[0], 0).move_to(
                     bottomleft=(
                         0,
-                        self.app.window.size[1] - self.mult(32) - self.app.tbarh,
+                        self.app.window.size[1] - self.mult(32),
                     )
                 ),
                 {"ignore_grid": True, "parent_id": 0, "z": 9999},
@@ -334,7 +334,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, size, size).move_to(
                 center=(
                     self.app.window.size[0] / 2,
-                    (self.app.window.size[1] - self.app.tbarh) / 2,
+                    self.app.window.size[1] / 2,
                 )
             ),
             {
@@ -530,6 +530,8 @@ class MusicControlsUI(UIComponent):
             self.key_controls(event)
 
     def key_controls(self, event):
+        if self.app.input_stolen:
+            return
         if self.app.music is not None:
             if event.key in [
                 pygame.K_KP_ENTER,

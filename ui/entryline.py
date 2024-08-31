@@ -77,7 +77,8 @@ class UIEntryline:
         if event.type == pygame.KEYUP:
             self.action_data = None
 
-    def update(self):
+    def update(self, app):
+        app.input_stolen = True
         if pygame.time.get_ticks() - self.cursor_time >= 350:
             self.cursor_on = not self.cursor_on
             self.cursor_time = pygame.time.get_ticks()

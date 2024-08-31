@@ -46,7 +46,7 @@ class RenameMusicUI(UIComponent):
         self.mili.text_element(
             "Rename Music", {"size": self.mult(26)}, None, mili.CENTER
         )
-        self.entryline.update()
+        self.entryline.update(self.app)
         self.entryline.ui(
             self.mili,
             pygame.Rect(
