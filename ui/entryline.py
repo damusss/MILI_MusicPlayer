@@ -1,6 +1,7 @@
 import mili
 import pygame
 import functools
+from ui.common import Keybinds
 
 
 class UIEntryline:
@@ -61,19 +62,23 @@ class UIEntryline:
             self.add(event.text)
             self.start_action(self.add, event.text)
         if event.type == pygame.KEYDOWN:
-            self.set_cursor_on()
-            if event.key == pygame.K_LEFT:
-                self.move(-1)
-                self.start_action(self.move, -1)
-            elif event.key == pygame.K_RIGHT:
-                self.move(1)
-                self.start_action(self.move, 1)
-            elif event.key == pygame.K_BACKSPACE:
-                self.remove()
-                self.start_action(self.remove)
-            elif event.key == pygame.K_DELETE:
-                self.canc()
-                self.start_action(self.canc)
+            if Keybinds.check("erase_input", event):
+                self.text = ""
+                self.cursor = 0
+            else:
+                self.set_cursor_on()
+                if event.key == pygame.K_LEFT:
+                    self.move(-1)
+                    self.start_action(self.move, -1)
+                elif event.key == pygame.K_RIGHT:
+                    self.move(1)
+                    self.start_action(self.move, 1)
+                elif event.key == pygame.K_BACKSPACE:
+                    self.remove()
+                    self.start_action(self.remove)
+                elif event.key == pygame.K_DELETE:
+                    self.canc()
+                    self.start_action(self.canc)
         if event.type == pygame.KEYUP:
             self.action_data = None
 

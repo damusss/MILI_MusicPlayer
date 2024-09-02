@@ -146,7 +146,11 @@ class AddMusicUI(UIComponent):
         self.app.playlist_viewer.modal_state = "none"
 
     def event(self, event):
+        if self.app.listening_key:
+            return False
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
             return True
+        if Keybinds.check("confirm", event):
+            self.confirm_add()
         return False

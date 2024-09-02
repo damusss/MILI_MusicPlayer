@@ -12,6 +12,7 @@ import moviepy.editor as moviepy
 from ui.history import HistoryUI
 from ui.settings import SettingsUI
 from ui.list_viewer import ListViewerUI
+from ui.edit_keybinds import EditKeybindsUI
 from health_check import main as health_check
 from ui.music_controls import MusicControlsUI
 from ui.playlist_viewer import PlaylistViewerUI
@@ -67,6 +68,8 @@ class MusicPlayerApp(mili.GenericApp):
         self.settings = SettingsUI(self)
         self.history = HistoryUI(self)
         self.discord_presence = DiscordPresence(self)
+        self.keybinds = Keybinds(self)
+        self.edit_keybinds = EditKeybindsUI(self)
         # settings
         self.user_framerate = 60
         self.volume = 1
@@ -86,6 +89,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.focused = True
         self.ui_mult = 1
         self.input_stolen = False
+        self.listening_key = False
         # be effect/mili
         self.bg_effect_image = None
         self.bg_black_image = None
@@ -155,6 +159,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.minimize_image = load_icon("minimize")
         self.maximize_image = load_icon("maximize")
         self.resize_image = load_icon("resize")
+        self.reset_image = load_icon("reset")
         self.window.set_icon(self.playlist_cover)
 
     def init_load_data(self):
@@ -206,20 +211,22 @@ class MusicPlayerApp(mili.GenericApp):
         win_pos = self.window.position
         win_size = self.window.size
         discord_presence = False
-        try:
-            data = load_json(
-                "data/settings.json",
-                {
-                    "volume": 1,
-                    "loops": True,
-                    "shuffle": False,
-                    "fps": 60,
-                    "custom_title": True,
-                    "win_pos": win_pos,
-                    "win_size": win_size,
-                    "discord_presence": discord_presence,
-                },
-            )
+        default_binds = self.keybinds.get_save_data()
+        data = load_json(
+            "data/settings.json",
+            {
+                "volume": 1,
+                "loops": True,
+                "shuffle": False,
+                "fps": 60,
+                "custom_title": True,
+                "win_pos": win_pos,
+                "win_size": win_size,
+                "discord_presence": discord_presence,
+                "keybinds": default_binds,
+            },
+        )
+        if isinstance(data, dict):
             self.volume = data.get("volume", 1)
             self.loops = data.get("loops", True)
             self.shuffle = data.get("shuffle", False)
@@ -228,8 +235,7 @@ class MusicPlayerApp(mili.GenericApp):
             win_pos = data.get("win_pos", win_pos)
             win_size = data.get("win_size", win_size)
             discord_presence = data.get("discord_presence", False)
-        except Exception:
-            pass
+            self.keybinds.load_from_data(data.get("keybinds", default_binds))
         self.target_framerate = self.user_framerate
         if win_pos != self.window.position:
             self.window.position = win_pos
@@ -321,9 +327,19 @@ class MusicPlayerApp(mili.GenericApp):
         if len(self.history_data) > HISTORY_LEN:
             self.history_data.pop(0)
 
-    def play_music(self, music, idx):
+    def play_music(self, music: MusicData, idx):
         if self.music is not None:
             self.add_to_history()
+        if not os.path.exists(music.audiopath):
+            music.playlist.remove(music.audiopath)
+            pygame.display.message_box(
+                "Failed playing music",
+                "The request music was renamed or deleted externally, therefore the path was removed from the playlist.",
+                "error",
+                None,
+                ("Understood",),
+            )
+            return
         self.music = music
         self.music_paused = False
         self.music_index = idx
@@ -356,6 +372,7 @@ class MusicPlayerApp(mili.GenericApp):
             self.add_to_history()
         self.music = None
         self.music_paused = False
+        self.bg_effect = False
         pygame.mixer.music.stop()
         pygame.mixer.music.unload()
         if self.music_controls.minip.window is not None:
@@ -366,6 +383,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.discord_presence.update()
 
     def on_quit(self):
+        self.save()
+
+    def save(self):
         if self.music is not None:
             self.add_to_history()
         playlist_data = [
@@ -389,6 +409,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "win_pos": self.window.position,
                 "win_size": self.window.size,
                 "discord_presence": self.discord_presence.active,
+                "keybinds": self.keybinds.get_save_data(),
             },
         )
         for playlist in self.playlists:
@@ -542,8 +563,10 @@ class MusicPlayerApp(mili.GenericApp):
 
             if self.modal_state == "settings":
                 self.settings.ui()
-            if self.modal_state == "history":
+            elif self.modal_state == "history":
                 self.history.ui()
+            elif self.modal_state == "keybinds":
+                self.edit_keybinds.ui()
 
             self.music_controls.ui()
 
@@ -784,7 +807,7 @@ class MusicPlayerApp(mili.GenericApp):
     def change_state(self, state):
         self.view_state = state
         self.close_menu()
-        self.mili._ctx._memory = {}
+        self.mili.clear_memory()
         self.discord_presence.update()
 
     def close_menu(self):
@@ -839,12 +862,7 @@ class MusicPlayerApp(mili.GenericApp):
             )
 
     def event(self, event):
-        if (
-            event.type == pygame.KEYDOWN
-            and event.key == pygame.K_q
-            and event.mod & pygame.KMOD_CTRL
-        ):
-            self.quit()
+        self.shortcuts_event(event)
         if event.type == pygame.WINDOWFOCUSGAINED and event.window == self.window:
             self.focused = True
         if event.type == pygame.WINDOWFOCUSLOST and event.window == self.window:
@@ -857,13 +875,40 @@ class MusicPlayerApp(mili.GenericApp):
         if self.modal_state == "settings":
             if self.settings.event(event):
                 return
-        if self.modal_state == "history":
+        elif self.modal_state == "history":
             if self.history.event(event):
+                return
+        elif self.modal_state == "keybinds":
+            if self.edit_keybinds.event(event):
                 return
         if self.view_state == "list":
             self.list_viewer.event(event)
         elif self.view_state == "playlist":
             self.playlist_viewer.event(event)
+
+    def shortcuts_event(self, event):
+        if self.listening_key:
+            return
+        if event.type == pygame.KEYDOWN:
+            if Keybinds.check("quit", event):
+                self.quit()
+            elif Keybinds.check("save", event):
+                self.save()
+            elif Keybinds.check("toggle_settings", event):
+                if self.modal_state == "settings":
+                    self.settings.close()
+                else:
+                    self.open_settings()
+            elif Keybinds.check("new/add", event):
+                if self.view_state == "list":
+                    if self.list_viewer.modal_state != "new_playlist":
+                        self.list_viewer.action_new()
+                elif self.view_state == "playlist":
+                    if self.playlist_viewer.modal_state != "add":
+                        self.playlist_viewer.action_add_music()
+            elif Keybinds.check("open_history", event):
+                self.open_settings()
+                self.settings.action_history()
 
 
 if __name__ == "__main__":

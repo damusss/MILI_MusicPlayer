@@ -467,10 +467,24 @@ class PlaylistViewerUI(UIComponent):
             else:
                 self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
                 self.scrollbar.scroll_moved()
-        if not modal_exit and (
-            event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
-        ):
-            if self.search_active:
-                self.stop_searching()
-            else:
-                self.back()
+        self.shortcuts_event(event, modal_exit)
+
+    def shortcuts_event(self, event, modal_exit):
+        if self.app.listening_key:
+            return
+        if event.type == pygame.KEYDOWN:
+            if not modal_exit and event.key == pygame.K_ESCAPE:
+                if self.search_active:
+                    self.stop_searching()
+                else:
+                    self.back()
+            elif Keybinds.check("toggle_search", event):
+                if self.search_active:
+                    self.stop_searching()
+                else:
+                    self.action_search()
+            elif Keybinds.check("change_cover", event):
+                if self.modal_state == "cover":
+                    self.change_cover.close()
+                else:
+                    self.action_cover()

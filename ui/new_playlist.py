@@ -230,7 +230,15 @@ class NewPlaylistUI(UIComponent):
         self.entryline.text = ""
 
     def event(self, event):
+        if self.app.listening_key:
+            return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
+            return
+        if Keybinds.check("confirm", event):
+            if self.create_type == "empty":
+                self.action_create_empty()
+            else:
+                self.action_create_from_folder()
         if self.create_type == "empty":
             self.entryline.event(event)

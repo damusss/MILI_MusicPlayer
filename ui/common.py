@@ -36,7 +36,7 @@ LISTM_CV = 20, 25, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
 ALPHA = 120
-BORDER_CV = 120
+BORDER_CV = 100
 TOPB_CV = 15, 25, 8
 
 
@@ -87,3 +87,75 @@ class UIComponent:
 
     def mult(self, size):
         return max(0, int(size * self.app.ui_mult))
+
+
+class Binding:
+    def __init__(self, *keys, ctrl=False):
+        self.keys = list(keys)
+        self.ctrl = ctrl
+
+    def check(self, event: pygame.Event, extra_keys):
+        if not self.ctrl:
+            return event.type == pygame.KEYDOWN and any(
+                [event.key == k for k in self.keys + list(extra_keys)]
+            )
+        return (
+            event.type == pygame.KEYDOWN
+            and any([event.key == k for k in self.keys + list(extra_keys)])
+            and event.mod & pygame.KMOD_CTRL
+        )
+
+
+class Keybinds:
+    instance: "Keybinds" = None
+
+    def __init__(self, app):
+        self.app = app
+        self.reset()
+        Keybinds.instance = self
+
+    @classmethod
+    def check(cls, name, event, *extra_keys):
+        bind = cls.instance.keybinds[name]
+        return (
+            bind.check(event, extra_keys)
+            and (not cls.instance.app.input_stolen or bind.ctrl)
+            and not cls.instance.app.listening_key
+        )
+
+    def reset(self):
+        self.keybinds = {
+            "confirm": Binding(pygame.K_RETURN),
+            "toggle_settings": Binding(pygame.K_s),
+            "volume_up": Binding(pygame.K_UP),
+            "volume_down": Binding(pygame.K_DOWN),
+            "previous_track": Binding(pygame.K_LEFT),
+            "next_track": Binding(pygame.K_RIGHT),
+            "pause_music": Binding(pygame.K_SPACE),
+            "quit": Binding(pygame.K_q, ctrl=True),
+            "new/add": Binding(pygame.K_a, ctrl=True),
+            "save": Binding(pygame.K_s, ctrl=True),
+            "open_history": Binding(pygame.K_h, ctrl=True),
+            "toggle_search": Binding(pygame.K_f, ctrl=True),
+            "erase_input": Binding(pygame.K_BACKSPACE, ctrl=True),
+            "change_cover": Binding(pygame.K_c, ctrl=True),
+            "end_music": Binding(pygame.K_e, ctrl=True),
+            "rewind_music": Binding(pygame.K_r, ctrl=True),
+            "toggle_miniplayer": Binding(pygame.K_d, ctrl=True),
+        }
+        self.default_keybinds = self.keybinds.copy()
+
+    def load_from_data(self, data):
+        for name, bdata in data.items():
+            if name not in self.keybinds:
+                print("gogogo")
+                continue
+            binding = self.keybinds[name]
+            binding.keys = bdata["keys"]
+            binding.ctrl = bdata["ctrl"]
+
+    def get_save_data(self):
+        return {
+            name: {"keys": bind.keys, "ctrl": bind.ctrl}
+            for name, bind in self.keybinds.items()
+        }

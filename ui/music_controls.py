@@ -14,7 +14,7 @@ class MusicControlsUI(UIComponent):
         self.offset_restart_time = pygame.time.get_ticks()
         self.cont_height = 0
         self.small_cont = True
-        self.anims = [animation(-3) for i in range(5)]
+        self.anims = [animation(-3) for i in range(6)]
         self.handle_anim = animation(-10)
         self.slider = mili.Slider(False, True, 30, False)
         self.bigcover_cache = mili.ImageCache()
@@ -145,7 +145,7 @@ class MusicControlsUI(UIComponent):
             pygame.Rect(0, 0, size.x, size.y).move_to(
                 bottomright=(
                     self.app.window.size[0] - self.mult(8),
-                    self.app.window.size[1] - self.mult(20),
+                    self.app.window.size[1] - self.mult(17),
                 )
             ),
             {"ignore_grid": True, "z": 9999, "parent_id": 0},
@@ -357,32 +357,33 @@ class MusicControlsUI(UIComponent):
                 "offset": (0, -self.mult(5)),
             },
         ):
+            self.ui_control_btn(self.app.reset_image, self.action_rewind, 30, 0)
             if self.app.music_index > 0:
                 self.ui_control_btn(
-                    self.skip_previous_image, self.action_skip_previous, 40, 0
+                    self.skip_previous_image, self.action_skip_previous, 40, 1
                 )
             self.ui_control_btn(
                 self.play_image if self.app.music_paused else self.pause_image,
                 self.action_play,
                 50,
-                1,
+                2,
             )
             if self.app.music_index < len(self.app.music.playlist.musiclist) - 1:
-                self.ui_control_btn(self.skip_next_image, self.action_skip_next, 40, 2)
+                self.ui_control_btn(self.skip_next_image, self.action_skip_next, 40, 3)
             self.ui_control_btn(
                 self.app.loopon_image
                 if self.app.music_loops
                 else self.app.loopoff_image,
                 self.action_loop,
-                40,
-                3,
+                35,
+                4,
                 True,
             )
             self.ui_control_btn(
                 self.minip_image if self.minip.window is None else self.maxip_image,
                 self.action_miniplayer,
-                40,
-                4,
+                35,
+                5,
                 True,
             )
 
@@ -493,6 +494,9 @@ class MusicControlsUI(UIComponent):
             return
         self.app.play_music(self.app.music.playlist.musiclist[new_idx], new_idx)
 
+    def action_rewind(self):
+        self.app.play_music(self.app.music, self.app.music_index)
+
     def music_auto_finish(self):
         if self.app.music_loops:
             self.app.play_music(self.app.music, self.app.music_index)
@@ -530,19 +534,11 @@ class MusicControlsUI(UIComponent):
             self.key_controls(event)
 
     def key_controls(self, event):
-        if self.app.input_stolen:
+        if self.app.input_stolen or self.app.listening_key:
             return
         if self.app.music is not None:
-            if event.key in [
-                pygame.K_KP_ENTER,
-                pygame.K_RETURN,
-                pygame.K_PAUSE,
-                1073742085,
-            ]:
-                self.action_play()
-            if event.key == pygame.K_SPACE and (
-                self.app.view_state != "playlist"
-                or not self.app.playlist_viewer.search_active
+            if Keybinds.check(
+                "pause_music", event, pygame.K_KP_ENTER, 1073742085, pygame.K_RETURN
             ):
                 self.action_play()
             if (
@@ -553,21 +549,26 @@ class MusicControlsUI(UIComponent):
                 self.action_play()
             if event.scancode == pygame.KSCAN_PAUSE:
                 self.action_play()
-            if event.key in [
-                1073742082,
-                pygame.K_RIGHT,
-                pygame.K_KP_6,
-            ]:
+            if Keybinds.check("next_track", event, pygame.K_KP_6, 1073742082):
                 self.action_skip_next(True, True)
-            if event.key in [1073742083, pygame.K_LEFT, pygame.K_KP_4]:
+            elif Keybinds.check("previous_track", event, 1073742083, pygame.K_KP_4):
                 self.action_skip_previous()
-        if event.key in [pygame.K_UP, pygame.K_KP_8]:
+            elif Keybinds.check("rewind_music", event):
+                self.action_rewind()
+        if Keybinds.check("volume_up", event, pygame.K_KP_8):
             self.app.volume += 0.05
             if self.app.volume > 1:
                 self.app.volume = 1
             pygame.mixer.music.set_volume(self.app.volume)
-        if event.key in [pygame.K_DOWN, pygame.K_KP_2]:
+        elif Keybinds.check("volume_down", event, pygame.K_KP_2):
             self.app.volume -= 0.05
             if self.app.volume < 0:
                 self.app.volume = 0
             pygame.mixer.music.set_volume(self.app.volume)
+        elif Keybinds.check("end_music", event):
+            self.app.end_music()
+        elif Keybinds.check("toggle_miniplayer", event):
+            if self.minip.window is None:
+                self.action_miniplayer()
+            else:
+                self.minip.action_back_to_app()

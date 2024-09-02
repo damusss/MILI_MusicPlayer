@@ -83,15 +83,16 @@ class HistoryUI(UIComponent):
                 "pady": 2,
                 "spacing": 0,
             },
+            get_data=True,
         ) as it:
             self.mili.rect({"color": (cond(self.app, it, *LISTM_CV),) * 3})
             self.ui_history_title(history)
-            self.ui_history_time(history)
+            self.ui_history_time(history, it.rect)
 
             if it.left_just_released and self.app.can_interact():
                 self.restore_history(history)
 
-    def ui_history_time(self, history):
+    def ui_history_time(self, history, cont_rect):
         if history.music.pos_supported:
             data = self.mili.line_element(
                 [("-49.5", 0), ("49.5", 0)],
@@ -106,6 +107,19 @@ class HistoryUI(UIComponent):
                 {"color": "red", "size": self.mult(2)},
                 (data.rect.topleft, (w, data.rect.h)),
                 {"ignore_grid": True, "blocking": False},
+            )
+            txt, txtstyle = (
+                f"{int(history.position/60):.0f}:{history.position%60:.0f}/{int(history.duration/60):.0f}:{history.duration%60:.0f}",
+                {"size": self.mult(15), "color": (120,) * 3},
+            )
+            size = self.mili.text_size(txt, txtstyle)
+            self.mili.text_element(
+                txt,
+                txtstyle,
+                pygame.Rect((0, 0), size).move_to(
+                    bottomright=(cont_rect.w - self.mult(2), cont_rect.h - self.mult(4))
+                ),
+                {"ignore_grid": True},
             )
 
     def ui_history_title(self, history: HistoryData):
@@ -157,6 +171,8 @@ class HistoryUI(UIComponent):
         self.app.modal_state = "settings"
 
     def event(self, event):
+        if self.app.listening_key:
+            return False
         if event.type == pygame.MOUSEWHEEL:
             self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:

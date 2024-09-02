@@ -135,6 +135,10 @@ class RenamePlaylistUI(UIComponent):
         self.app.list_viewer.modal_state = "none"
 
     def event(self, event):
+        if self.app.listening_key:
+            return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
+        if Keybinds.check("confirm", event):
+            self.action_confirm()
         self.entryline.event(event)

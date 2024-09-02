@@ -10,12 +10,10 @@ class ChangeCoverUI(UIComponent):
     def init(self):
         self.anim_close = animation(-5)
         self.anims = [animation(-3) for i in range(4)]
+        self.cache = mili.ImageCache()
 
         self.upload_image = load_icon("uploadf")
-
         self.brush_image = load_icon("brush")
-        self.reset_image = load_icon("reset")
-        self.cache = mili.ImageCache()
 
         self.selected_image = None
         self.is_reset = False
@@ -65,7 +63,9 @@ class ChangeCoverUI(UIComponent):
                 "align": "center",
             },
         ):
-            self.app.ui_image_btn(self.reset_image, self.action_reset, self.anims[0])
+            self.app.ui_image_btn(
+                self.app.reset_image, self.action_reset, self.anims[0]
+            )
             self.app.ui_image_btn(
                 self.brush_image, self.action_generate_cover, self.anims[1]
             )
@@ -248,7 +248,11 @@ class ChangeCoverUI(UIComponent):
         self.app.playlist_viewer.modal_state = "none"
 
     def event(self, event):
+        if self.app.listening_key:
+            return False
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
             return True
+        if Keybinds.check("confirm", event):
+            self.action_confirm()
         return False

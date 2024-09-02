@@ -117,6 +117,8 @@ class MoveMusicUI(UIComponent):
         self.app.playlist_viewer.modal_state = "none"
 
     def event(self, event):
+        if self.app.listening_key:
+            return False
         if event.type == pygame.MOUSEWHEEL:
             self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:

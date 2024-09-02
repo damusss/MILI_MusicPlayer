@@ -8,7 +8,7 @@ class SettingsUI(UIComponent):
     def init(self):
         self.anim_close = animation(-5)
         self.anim_handle = animation(-3)
-        self.anims = [animation(-3) for i in range(6)]
+        self.anims = [animation(-3) for i in range(7)]
         self.cache = mili.ImageCache()
         self.slider = mili.Slider(False, True, (10, 10))
         self.bar_controlled = False
@@ -23,6 +23,7 @@ class SettingsUI(UIComponent):
         self.history_image = load_icon("history")
         self.discordon_image = load_icon("discordon")
         self.discordoff_image = load_icon("discordoff")
+        self.keybinds_image = load_icon("keyboard")
 
     def ui(self):
         with self.mili.begin(
@@ -80,13 +81,13 @@ class SettingsUI(UIComponent):
             self.app.ui_image_btn(
                 self.app.loopon_image if self.app.loops else self.app.loopoff_image,
                 self.action_loop,
-                self.anims[2],
+                self.anims[1],
                 br="50" if not self.app.loops else "5",
             )
             self.app.ui_image_btn(
                 self.shuffleon_image if self.app.shuffle else self.shuffleoff_image,
                 self.action_shuffle,
-                self.anims[3],
+                self.anims[2],
                 br="50" if not self.app.shuffle else "5",
             )
 
@@ -103,12 +104,15 @@ class SettingsUI(UIComponent):
             | mili.PADLESS,
         ):
             self.app.ui_image_btn(
-                self.history_image, self.action_history, self.anims[1]
+                self.history_image, self.action_history, self.anims[3]
+            )
+            self.app.ui_image_btn(
+                self.keybinds_image, self.action_keybinds, self.anims[4], br="5"
             )
             self.app.ui_image_btn(
                 self.fps60_image if self.app.user_framerate == 60 else self.fps30_image,
                 self.action_fps,
-                self.anims[4],
+                self.anims[5],
                 br="5",
             )
             self.app.ui_image_btn(
@@ -116,7 +120,7 @@ class SettingsUI(UIComponent):
                 if not self.app.discord_presence.active
                 else self.discordon_image,
                 self.action_discord,
-                self.anims[5],
+                self.anims[6],
             )
 
     def action_discord(self):
@@ -219,10 +223,15 @@ class SettingsUI(UIComponent):
     def action_loop(self):
         self.app.loops = not self.app.loops
 
+    def action_keybinds(self):
+        self.app.modal_state = "keybinds"
+
     def close(self):
         self.app.modal_state = "none"
 
     def event(self, event):
+        if self.app.listening_key:
+            return False
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
             return True

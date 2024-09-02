@@ -3,12 +3,13 @@
 A MILI UI demo featuring a rich music player.<br>
 [MILI Github](https://github.com/damusss/mili), [MILI PyPI](https://pypi.org/project/mili-ui/)
 
-## Features
+# Features
 
 - 30/60 FPS, Power saving, Async loading
 - Custom titlebar/borders
 - Rich Discord presence
 - History
+- Keybinds
 - Playlists (load from folder, rename, delete, reorder, upload/generate cover, search)
 - Musics (add, rename, delete, reorder, move to playlist)
 
@@ -19,11 +20,33 @@ A MILI UI demo featuring a rich music player.<br>
   - **Unsupported Track Positioning**: WAV, OPUS, WV, AIFF
 
 - Controls
-  - Pause, Volume/mute, Next/previous/auto-next
+  - Pause, Volume/mute, Next/previous/auto-next, Rewind
   - MP4 Video Player
   - Background effects
   - Loop (playlist/music), Shuffle
   - Miniplayer
+
+# Keyboard Shortcuts
+
+Keybinds are configurable in the settings.
+Only reserved key is **ENTER** and the only allowed modifier is **CTRL**.
+
+- **ESCAPE**: Back
+- **ENTER**: Confirm
+- **S**: Toggle settings
+- **UP**, **DOWN**: Volume up/ down
+- **SPACE**/**ENTER**: Pause music
+- **LEFT**, **RIGHT**: Previous/next song
+- **CTRL** + **Q**: Quit
+- **CTRL** + **A**: New playlist/Add music
+- **CTRL** + **S**: Save
+- **CTRL** + **H**: Open history
+- **CTRL** + **F**: Toggle playlist search
+- **CTRL** + **BACKSPACE**: Erase input field
+- **CTRL** + **C**: Toggle change cover
+- **CTRL** + **E**: End music
+- **CTRL** + **R**: Rewind music
+- **CTRL** + **D**: Toggle miniplayer
 
 # Building/Running
 
