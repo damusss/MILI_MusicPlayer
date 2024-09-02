@@ -35,7 +35,7 @@ Only reserved key is **ENTER** and the only allowed modifier is **CTRL**.
 - **ENTER**: Confirm
 - **S**: Toggle settings
 - **UP**, **DOWN**: Volume up/ down
-- **SPACE**/**ENTER**: Pause music
+- **SPACE**: Pause music
 - **LEFT**, **RIGHT**: Previous/next song
 - **CTRL** + **Q**: Quit
 - **CTRL** + **A**: New playlist/Add music

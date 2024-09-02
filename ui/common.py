@@ -33,6 +33,7 @@ MUSICC_CV = 10
 CONTROLS_CV = 10, 30, 18
 MENU_CV = 6, 20
 LISTM_CV = 20, 25, 18
+KEYB_CV = 20, 32, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
 ALPHA = 120
@@ -90,20 +91,38 @@ class UIComponent:
 
 
 class Binding:
-    def __init__(self, *keys, ctrl=False):
-        self.keys = list(keys)
-        self.ctrl = ctrl
+    class Bind:
+        def __init__(self, key, ctrl=False):
+            self.key = key
+            self.ctrl = ctrl
 
-    def check(self, event: pygame.Event, extra_keys):
-        if not self.ctrl:
-            return event.type == pygame.KEYDOWN and any(
-                [event.key == k for k in self.keys + list(extra_keys)]
-            )
-        return (
-            event.type == pygame.KEYDOWN
-            and any([event.key == k for k in self.keys + list(extra_keys)])
-            and event.mod & pygame.KMOD_CTRL
-        )
+    def __init__(self, *binds, ctrl=False):
+        newbinds = []
+        for bind in binds:
+            if isinstance(bind, int):
+                newbinds.append(Binding.Bind(bind, ctrl))
+            else:
+                newbinds.append(bind)
+        self.binds: list[Binding.Bind] = newbinds
+
+    def check(self, event: pygame.Event, extra_keys, input_stolen):
+        if event.type == pygame.KEYDOWN:
+            for key in extra_keys:
+                if event.key == key and not input_stolen:
+                    return True
+            for bind in self.binds:
+                if bind.ctrl:
+                    if event.key == bind.key and event.mod & pygame.KMOD_CTRL:
+                        return True
+                else:
+                    if (
+                        event.key == bind.key
+                        and not input_stolen
+                        and not event.mod & pygame.KMOD_CTRL
+                    ):
+                        return True
+
+        return False
 
 
 class Keybinds:
@@ -116,11 +135,8 @@ class Keybinds:
 
     @classmethod
     def check(cls, name, event, *extra_keys):
-        bind = cls.instance.keybinds[name]
-        return (
-            bind.check(event, extra_keys)
-            and (not cls.instance.app.input_stolen or bind.ctrl)
-            and not cls.instance.app.listening_key
+        return not cls.instance.app.listening_key and cls.instance.keybinds[name].check(
+            event, extra_keys, cls.instance.app.input_stolen
         )
 
     def reset(self):
@@ -148,14 +164,12 @@ class Keybinds:
     def load_from_data(self, data):
         for name, bdata in data.items():
             if name not in self.keybinds:
-                print("gogogo")
                 continue
             binding = self.keybinds[name]
-            binding.keys = bdata["keys"]
-            binding.ctrl = bdata["ctrl"]
+            binding.binds = [Binding.Bind(d["key"], d["ctrl"]) for d in bdata]
 
     def get_save_data(self):
         return {
-            name: {"keys": bind.keys, "ctrl": bind.ctrl}
-            for name, bind in self.keybinds.items()
+            name: [{"key": bind.key, "ctrl": bind.ctrl} for bind in binding.binds]
+            for name, binding in self.keybinds.items()
         }

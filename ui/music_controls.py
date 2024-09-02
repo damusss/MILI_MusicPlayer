@@ -555,6 +555,13 @@ class MusicControlsUI(UIComponent):
                 self.action_skip_previous()
             elif Keybinds.check("rewind_music", event):
                 self.action_rewind()
+            elif Keybinds.check("toggle_miniplayer", event):
+                if self.minip.window is None:
+                    self.action_miniplayer()
+                else:
+                    self.minip.action_back_to_app()
+            elif Keybinds.check("end_music", event):
+                self.app.end_music()
         if Keybinds.check("volume_up", event, pygame.K_KP_8):
             self.app.volume += 0.05
             if self.app.volume > 1:
@@ -565,10 +572,3 @@ class MusicControlsUI(UIComponent):
             if self.app.volume < 0:
                 self.app.volume = 0
             pygame.mixer.music.set_volume(self.app.volume)
-        elif Keybinds.check("end_music", event):
-            self.app.end_music()
-        elif Keybinds.check("toggle_miniplayer", event):
-            if self.minip.window is None:
-                self.action_miniplayer()
-            else:
-                self.minip.action_back_to_app()

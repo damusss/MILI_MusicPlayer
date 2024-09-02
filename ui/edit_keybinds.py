@@ -10,7 +10,7 @@ class EditKeybindsUI(UIComponent):
         self.anim_remove = animation(-2)
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
-        self.scrollbar = mili.Scrollbar(self.scroll, 5, 3, 3, 0, "y")
+        self.scrollbar = mili.Scrollbar(self.scroll, 7, 4, 0, 0, "y")
         self.listening_bind: Binding = None
         self.listening_idx = 0
         self.listening_key = None
@@ -57,7 +57,7 @@ class EditKeybindsUI(UIComponent):
             mili.RESIZE | mili.PADLESS | mili.CENTER | mili.X | {"clip_draw": False},
         ):
             self.mili.text_element(
-                "Keybinds", {"size": self.mult(26)}, None, mili.CENTER
+                "Keybindings", {"size": self.mult(26)}, None, mili.CENTER
             )
             self.app.ui_image_btn(
                 self.app.reset_image, self.action_reset, self.anim_reset, 30
@@ -91,7 +91,7 @@ class EditKeybindsUI(UIComponent):
             mili.PADLESS
             | mili.X
             | {
-                "fillx": "97.5" if self.scrollbar.needed else True,
+                "fillx": "96.5" if self.scrollbar.needed else True,
                 "anchor": "max_spacing",
                 "offset": self.scroll.get_offset(),
                 "align": "first",
@@ -105,15 +105,16 @@ class EditKeybindsUI(UIComponent):
             )
             self.ui_binds(bind)
 
-    def ui_binds(self, bind):
+    def ui_binds(self, binding):
         with self.mili.begin(
             None, {"fillx": "65", "filly": True} | mili.PADLESS | mili.X
         ):
             for i in range(2):
                 display_txt = "-"
                 pgkey = None
-                if i <= len(bind.keys) - 1:
-                    pgkey = bind.keys[i]
+                if i <= len(binding.binds) - 1:
+                    bind = binding.binds[i]
+                    pgkey = bind.key
                     display_txt = pygame.key.name(pgkey).upper()
                     if display_txt.strip() == "":
                         display_txt = "UNKNOWN"
@@ -125,13 +126,13 @@ class EditKeybindsUI(UIComponent):
                         {
                             "color": (
                                 (
-                                    LISTM_CV[1]
+                                    KEYB_CV[1]
                                     if (
-                                        bind is self.listening_bind
+                                        binding is self.listening_bind
                                         and i == self.listening_idx
                                         and self.app.listening_key
                                     )
-                                    else cond(self.app, it, *LISTM_CV)
+                                    else cond(self.app, it, *KEYB_CV)
                                 ),
                             )
                             * 3,
@@ -141,7 +142,7 @@ class EditKeybindsUI(UIComponent):
                     self.mili.text(display_txt, {"size": self.mult(15)})
 
                     if it.left_just_released and self.app.can_interact():
-                        self.start_listening(bind, i)
+                        self.start_listening(binding, i)
 
     def ui_listening(self):
         with self.mili.begin(
@@ -185,7 +186,7 @@ class EditKeybindsUI(UIComponent):
                             self.anim_remove,
                             30,
                         )
-                text = "Press any key (optional ctrl modifier)"
+                text = "Press any key (optional CTRL modifier)"
                 color = (120,) * 3
                 size = 18
                 if self.listening_key is not None:
@@ -217,16 +218,17 @@ class EditKeybindsUI(UIComponent):
                 )
 
     def get_key_ok(self):
-        for bind in Keybinds.instance.keybinds.values():
-            if bind.ctrl == self.listening_ctrl and self.listening_key in bind.keys:
-                return False
+        for binding in Keybinds.instance.keybinds.values():
+            for bind in binding.binds:
+                if bind.ctrl == self.listening_ctrl and self.listening_key == bind.key:
+                    return False
         return True
 
     def action_remove_keybind(self):
         self.app.listening_key = False
-        self.listening_bind.keys = [self.listening_bind.keys[0]]
-        self.listening_bind.ctrl = False
+        self.listening_bind.binds = [self.listening_bind.binds[0]]
         self.listening_key = None
+        self.listening_ctrl = False
 
     def start_listening(self, bind, idx):
         self.app.listening_key = True
@@ -246,6 +248,8 @@ class EditKeybindsUI(UIComponent):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             if self.app.listening_key:
                 self.app.listening_key = False
+                self.listening_key = None
+                self.listening_ctrl = False
             else:
                 self.back()
             return True
@@ -254,7 +258,7 @@ class EditKeybindsUI(UIComponent):
             and self.app.listening_key
             and event.key not in [pygame.K_LCTRL, pygame.K_RCTRL]
         ):
-            self.listening_ctrl = event.mod & pygame.KMOD_CTRL
+            self.listening_ctrl = bool(event.mod & pygame.KMOD_CTRL)
             self.listening_key = event.key
         if (
             event.type == pygame.KEYUP
@@ -263,10 +267,14 @@ class EditKeybindsUI(UIComponent):
             and self.get_key_ok()
         ):
             self.app.listening_key = False
-            if len(self.listening_bind.keys) <= self.listening_idx:
-                self.listening_bind.keys.append(self.listening_key)
+            if len(self.listening_bind.binds) <= self.listening_idx:
+                self.listening_bind.binds.append(
+                    Binding.Bind(self.listening_key, self.listening_ctrl)
+                )
             else:
-                self.listening_bind.keys[self.listening_idx] = self.listening_key
-            self.listening_bind.ctrl = self.listening_ctrl
+                bind = self.listening_bind.binds[self.listening_idx]
+                bind.key = self.listening_key
+                bind.ctrl = self.listening_ctrl
             self.listening_key = None
+            self.listening_ctrl = False
         return False
