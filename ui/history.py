@@ -12,6 +12,8 @@ class HistoryUI(UIComponent):
         self.scroll = mili.Scroll()
 
     def ui(self):
+        handle_arrow_scroll(self.app.delta_time, self.scroll)
+
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):
@@ -175,6 +177,7 @@ class HistoryUI(UIComponent):
             return False
         if event.type == pygame.MOUSEWHEEL:
             self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.back()
             return True

@@ -17,6 +17,8 @@ class EditKeybindsUI(UIComponent):
         self.listening_ctrl = False
 
     def ui(self):
+        handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
+
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):
@@ -115,7 +117,7 @@ class EditKeybindsUI(UIComponent):
                 if i <= len(binding.binds) - 1:
                     bind = binding.binds[i]
                     pgkey = bind.key
-                    display_txt = pygame.key.name(pgkey).upper()
+                    display_txt = pygame.key.name(pgkey, False).upper()
                     if display_txt.strip() == "":
                         display_txt = "UNKNOWN"
                     if bind.ctrl:
@@ -192,7 +194,7 @@ class EditKeybindsUI(UIComponent):
                 if self.listening_key is not None:
                     size = 21
                     color = (255,) * 3
-                    keytxt = pygame.key.name(self.listening_key).upper()
+                    keytxt = pygame.key.name(self.listening_key, False).upper()
                     if keytxt.strip() == "":
                         keytxt = "UNKNOWN"
                     if self.listening_ctrl:
@@ -201,9 +203,13 @@ class EditKeybindsUI(UIComponent):
                     if not self.get_key_ok():
                         color = (255, 0, 0)
                         text = f"'{keytxt}' is already used"
-                if self.listening_key == pygame.K_ESCAPE and not self.listening_ctrl:
+                if (
+                    self.listening_key
+                    in [pygame.K_ESCAPE, 1073742085, 1073742082, 1073742083]
+                    and not self.listening_ctrl
+                ):
                     color = (255, 0, 0)
-                    text = "'ESCAPE' is a reserved key"
+                    text = f"'{pygame.key.name(self.listening_key, False).upper()}' is a reserved key"
                 self.mili.text_element(
                     text,
                     {
@@ -245,6 +251,7 @@ class EditKeybindsUI(UIComponent):
         if event.type == pygame.MOUSEWHEEL and not self.app.listening_key:
             self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
             self.scrollbar.scroll_moved()
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             if self.app.listening_key:
                 self.app.listening_key = False
@@ -264,6 +271,8 @@ class EditKeybindsUI(UIComponent):
             event.type == pygame.KEYUP
             and self.app.listening_key
             and self.listening_key is not None
+            and self.listening_key
+            not in [pygame.K_ESCAPE, 1073742085, 1073742082, 1073742083]
             and self.get_key_ok()
         ):
             self.app.listening_key = False

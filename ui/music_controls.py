@@ -537,9 +537,7 @@ class MusicControlsUI(UIComponent):
         if self.app.input_stolen or self.app.listening_key:
             return
         if self.app.music is not None:
-            if Keybinds.check(
-                "pause_music", event, pygame.K_KP_ENTER, 1073742085, pygame.K_RETURN
-            ):
+            if Keybinds.check("pause_music", event, 1073742085):
                 self.action_play()
             if (
                 event.mod & pygame.KMOD_META
@@ -549,9 +547,9 @@ class MusicControlsUI(UIComponent):
                 self.action_play()
             if event.scancode == pygame.KSCAN_PAUSE:
                 self.action_play()
-            if Keybinds.check("next_track", event, pygame.K_KP_6, 1073742082):
+            if Keybinds.check("next_track", event, 1073742082):
                 self.action_skip_next(True, True)
-            elif Keybinds.check("previous_track", event, 1073742083, pygame.K_KP_4):
+            elif Keybinds.check("previous_track", event, 1073742083):
                 self.action_skip_previous()
             elif Keybinds.check("rewind_music", event):
                 self.action_rewind()
@@ -562,13 +560,15 @@ class MusicControlsUI(UIComponent):
                     self.minip.action_back_to_app()
             elif Keybinds.check("end_music", event):
                 self.app.end_music()
-        if Keybinds.check("volume_up", event, pygame.K_KP_8):
+        if Keybinds.check("volume_up", event):
             self.app.volume += 0.05
             if self.app.volume > 1:
                 self.app.volume = 1
+            self.app.settings.slider.valuex = self.app.volume
             pygame.mixer.music.set_volume(self.app.volume)
-        elif Keybinds.check("volume_down", event, pygame.K_KP_2):
+        elif Keybinds.check("volume_down", event):
             self.app.volume -= 0.05
             if self.app.volume < 0:
                 self.app.volume = 0
+            self.app.settings.slider.valuex = self.app.volume
             pygame.mixer.music.set_volume(self.app.volume)

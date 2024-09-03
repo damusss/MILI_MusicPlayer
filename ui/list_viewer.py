@@ -31,6 +31,9 @@ class ListViewerUI(UIComponent):
         )
 
     def ui(self):
+        if self.modal_state == "none" and self.app.modal_state == "none":
+            handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
+
         self.scrollbar.short_size = self.mult(8)
         self.mili.text_element(
             "Music Player", {"size": self.mult(35)}, None, {"align": "center"}
@@ -236,6 +239,7 @@ class ListViewerUI(UIComponent):
             else:
                 self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
                 self.scrollbar.scroll_moved()
+
         if self.modal_state == "new_playlist":
             self.new_playlist.event(event)
         elif self.modal_state == "rename_playlist":

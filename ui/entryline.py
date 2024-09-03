@@ -11,9 +11,6 @@ class UIEntryline:
         self.placeholder = placeholder
         self.cursor_on = True
         self.cursor_time = pygame.time.get_ticks()
-        self.action_start_time = pygame.time.get_ticks()
-        self.action_data = None
-        self.action_time = pygame.time.get_ticks()
         self.target_files = target_files
 
     def add(self, char):
@@ -39,10 +36,6 @@ class UIEntryline:
         if self.cursor > len(self.text):
             self.cursor = len(self.text)
 
-    def start_action(self, func, *args):
-        self.action_start_time = pygame.time.get_ticks()
-        self.action_data = (func, args)
-
     def event(self, event):
         if event.type == pygame.TEXTINPUT:
             if self.target_files and event.text in [
@@ -60,7 +53,6 @@ class UIEntryline:
                 return
             self.set_cursor_on()
             self.add(event.text)
-            self.start_action(self.add, event.text)
         if event.type == pygame.KEYDOWN:
             if Keybinds.check("erase_input", event):
                 self.text = ""
@@ -69,39 +61,18 @@ class UIEntryline:
                 self.set_cursor_on()
                 if event.key == pygame.K_LEFT:
                     self.move(-1)
-                    self.start_action(self.move, -1)
                 elif event.key == pygame.K_RIGHT:
                     self.move(1)
-                    self.start_action(self.move, 1)
                 elif event.key == pygame.K_BACKSPACE:
                     self.remove()
-                    self.start_action(self.remove)
                 elif event.key == pygame.K_DELETE:
                     self.canc()
-                    self.start_action(self.canc)
-        if event.type == pygame.KEYUP:
-            self.action_data = None
 
     def update(self, app):
         app.input_stolen = True
         if pygame.time.get_ticks() - self.cursor_time >= 350:
             self.cursor_on = not self.cursor_on
             self.cursor_time = pygame.time.get_ticks()
-
-        if self.action_data is None:
-            return
-        if pygame.time.get_ticks() - self.action_start_time < (
-            800 if self.action_data[0] is self.add else 500
-        ):
-            self.set_cursor_on()
-            return
-
-        if pygame.time.get_ticks() - self.action_time >= (
-            80 if self.action_data[0] is self.add else 30
-        ):
-            self.action_time = pygame.time.get_ticks()
-            self.action_data[0](*self.action_data[1])
-            self.set_cursor_on()
 
     def set_cursor_on(self):
         self.cursor_on = True

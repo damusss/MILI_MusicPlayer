@@ -80,6 +80,9 @@ class PlaylistViewerUI(UIComponent):
         )
 
     def ui(self):
+        if self.modal_state == "none" and self.app.modal_state == "none":
+            handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
+
         if self.search_active:
             self.search_entryline.update(self.app)
         self.scrollbar.short_size = self.mult(8)
@@ -467,10 +470,11 @@ class PlaylistViewerUI(UIComponent):
             else:
                 self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
                 self.scrollbar.scroll_moved()
+
         self.shortcuts_event(event, modal_exit)
 
     def shortcuts_event(self, event, modal_exit):
-        if self.app.listening_key:
+        if self.app.listening_key or not self.app.can_interact():
             return
         if event.type == pygame.KEYDOWN:
             if not modal_exit and event.key == pygame.K_ESCAPE:

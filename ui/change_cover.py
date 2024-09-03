@@ -79,7 +79,9 @@ class ChangeCoverUI(UIComponent):
 
     def ui_selected_image(self):
         if self.selected_image is not None:
-            size = mili.percentage(50, min(self.app.window.size))
+            size = mili.percentage(
+                50, min(self.app.window.size[0], self.app.window.size[1] / 1.5)
+            )
             self.mili.image_element(
                 self.selected_image,
                 {"cache": self.img_cache},

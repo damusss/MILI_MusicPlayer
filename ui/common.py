@@ -76,6 +76,20 @@ def animation(value):
     )
 
 
+def handle_arrow_scroll(dt, scroll: mili.Scroll, scrollbar: mili.Scrollbar = None):
+    keys = pygame.key.get_pressed()
+    amount = 0
+    upbind = Keybinds.instance.keybinds["scroll_up"]
+    downbind = Keybinds.instance.keybinds["scroll_down"]
+    if any([keys[key] for key in upbind.get_keycodes()]):
+        amount -= 1
+    if any([keys[key] for key in downbind.get_keycodes()]):
+        amount += 1
+    scroll.scroll(0, amount * 300 * dt)
+    if scrollbar is not None:
+        scrollbar.scroll_moved()
+
+
 class UIComponent:
     def __init__(self, app: "MusicPlayerApp"):
         self.app = app
@@ -95,6 +109,9 @@ class Binding:
         def __init__(self, key, ctrl=False):
             self.key = key
             self.ctrl = ctrl
+
+    def get_keycodes(self):
+        return [bind.key for bind in self.binds]
 
     def __init__(self, *binds, ctrl=False):
         newbinds = []
@@ -143,11 +160,11 @@ class Keybinds:
         self.keybinds = {
             "confirm": Binding(pygame.K_RETURN),
             "toggle_settings": Binding(pygame.K_s),
-            "volume_up": Binding(pygame.K_UP),
-            "volume_down": Binding(pygame.K_DOWN),
-            "previous_track": Binding(pygame.K_LEFT),
-            "next_track": Binding(pygame.K_RIGHT),
-            "pause_music": Binding(pygame.K_SPACE),
+            "volume_up": Binding(pygame.K_UP, pygame.K_KP8),
+            "volume_down": Binding(pygame.K_DOWN, pygame.K_KP2),
+            "previous_track": Binding(pygame.K_LEFT, pygame.K_KP4),
+            "next_track": Binding(pygame.K_RIGHT, pygame.K_KP6),
+            "pause_music": Binding(pygame.K_SPACE, pygame.K_KP_ENTER),
             "quit": Binding(pygame.K_q, ctrl=True),
             "new/add": Binding(pygame.K_a, ctrl=True),
             "save": Binding(pygame.K_s, ctrl=True),
@@ -158,6 +175,8 @@ class Keybinds:
             "end_music": Binding(pygame.K_e, ctrl=True),
             "rewind_music": Binding(pygame.K_r, ctrl=True),
             "toggle_miniplayer": Binding(pygame.K_d, ctrl=True),
+            "scroll_up": Binding(pygame.K_PAGEUP, pygame.K_KP9),
+            "scroll_down": Binding(pygame.K_PAGEDOWN, pygame.K_KP3),
         }
         self.default_keybinds = self.keybinds.copy()
 

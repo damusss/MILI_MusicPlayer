@@ -59,6 +59,7 @@ class MusicPlayerApp(mili.GenericApp):
             )
         )
         self.window.minimum_size = WIN_MIN_SIZE
+        pygame.key.set_repeat(500, 30)
 
     def init_attributes(self):
         # components
@@ -222,6 +223,8 @@ class MusicPlayerApp(mili.GenericApp):
                 "custom_title": True,
                 "win_pos": win_pos,
                 "win_size": win_size,
+                "before_maximize_data": None,
+                "maximized": False,
                 "discord_presence": discord_presence,
                 "keybinds": default_binds,
             },
@@ -236,6 +239,8 @@ class MusicPlayerApp(mili.GenericApp):
             win_size = data.get("win_size", win_size)
             discord_presence = data.get("discord_presence", False)
             self.keybinds.load_from_data(data.get("keybinds", default_binds))
+            self.maximized = data.get("maximized", False)
+            self.before_maximize_data = data.get("before_maximize_data", None)
         self.target_framerate = self.user_framerate
         if win_pos != self.window.position:
             self.window.position = win_pos
@@ -408,6 +413,8 @@ class MusicPlayerApp(mili.GenericApp):
                 "custom_title": self.custom_title,
                 "win_pos": self.window.position,
                 "win_size": self.window.size,
+                "before_maximize_data": self.before_maximize_data,
+                "maximized": self.maximized,
                 "discord_presence": self.discord_presence.active,
                 "keybinds": self.keybinds.get_save_data(),
             },
@@ -443,6 +450,7 @@ class MusicPlayerApp(mili.GenericApp):
         ratio = self.window.size[0] / self.window.size[1]
         if ratio < 0.45:
             self.window.size = (self.window.size[1] * 0.46, self.window.size[1])
+            self.make_bg_image()
 
         multx = self.window.size[0] / UI_SIZES[0]
         multy = self.window.size[1] / UI_SIZES[1]
@@ -829,6 +837,7 @@ class MusicPlayerApp(mili.GenericApp):
             self.window.position = self.before_maximize_data[0]
             self.window.size = self.before_maximize_data[1]
             self.maximized = False
+            self.before_maximize_data = None
         else:
             self.before_maximize_data = self.window.position, self.window.size
             self.window.position = (0, 0)
@@ -894,21 +903,22 @@ class MusicPlayerApp(mili.GenericApp):
                 self.quit()
             elif Keybinds.check("save", event):
                 self.save()
-            elif Keybinds.check("toggle_settings", event):
-                if self.modal_state == "settings":
-                    self.settings.close()
-                else:
+            elif self.can_interact():
+                if Keybinds.check("toggle_settings", event):
+                    if self.modal_state == "settings":
+                        self.settings.close()
+                    else:
+                        self.open_settings()
+                elif Keybinds.check("new/add", event):
+                    if self.view_state == "list":
+                        if self.list_viewer.modal_state != "new_playlist":
+                            self.list_viewer.action_new()
+                    elif self.view_state == "playlist":
+                        if self.playlist_viewer.modal_state != "add":
+                            self.playlist_viewer.action_add_music()
+                elif Keybinds.check("open_history", event):
                     self.open_settings()
-            elif Keybinds.check("new/add", event):
-                if self.view_state == "list":
-                    if self.list_viewer.modal_state != "new_playlist":
-                        self.list_viewer.action_new()
-                elif self.view_state == "playlist":
-                    if self.playlist_viewer.modal_state != "add":
-                        self.playlist_viewer.action_add_music()
-            elif Keybinds.check("open_history", event):
-                self.open_settings()
-                self.settings.action_history()
+                    self.settings.action_history()
 
 
 if __name__ == "__main__":

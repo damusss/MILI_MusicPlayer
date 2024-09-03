@@ -29,14 +29,18 @@ A MILI UI demo featuring a rich music player.<br>
 # Keyboard Shortcuts
 
 Keybinds are configurable in the settings.
-Only reserved key is **ENTER** and the only allowed modifier is **CTRL**.
+The only reserved keys are **ENTER** and the media control buttons.
+The only allowed modifier is **CTRL**.
+Note that the volume buttons do not change the app's volume. It is advised to let them only modify the system's volume.
 
 - **ESCAPE**: Back
 - **ENTER**: Confirm
 - **S**: Toggle settings
-- **UP**, **DOWN**: Volume up/ down
-- **SPACE**: Pause music
-- **LEFT**, **RIGHT**: Previous/next song
+- **UP**/**KP 8**: Volume up
+- **DOWN**/**KP 2**: Volume down
+- **SPACE**/**ENTER**/**KP ENTER**/**AUDIO PLAY**: Play/pause music
+- **LEFT**/**KP 4**/**AUDIO PREVIOUS**: Previous song
+- **RIGHT**/**KP 6**/**AUDIO NEXT**: Next song
 - **CTRL** + **Q**: Quit
 - **CTRL** + **A**: New playlist/Add music
 - **CTRL** + **S**: Save
@@ -47,6 +51,8 @@ Only reserved key is **ENTER** and the only allowed modifier is **CTRL**.
 - **CTRL** + **E**: End music
 - **CTRL** + **R**: Rewind music
 - **CTRL** + **D**: Toggle miniplayer
+- **PAGE UP**/**KP 9**: Scroll up
+- **PAGE DOWN**/**KP 3**: Scroll down
 
 # Building/Running
 
