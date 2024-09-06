@@ -132,6 +132,7 @@ class PlaylistViewerUI(UIComponent):
         with self.mili.begin(
             (0, 0, self.app.window.size[0], 0), {"filly": True}, get_data=True
         ) as scroll_cont:
+            any_pending = any(music.pending for music in self.playlist.musiclist)
             if self.search_active:
                 paths = self.sort_searched_songs()
             else:
@@ -147,15 +148,33 @@ class PlaylistViewerUI(UIComponent):
                 drawn_musics = 0
                 for posi, (musici, path) in enumerate(paths):
                     drawn_musics += 1
-                    if self.ui_music(self.playlist.musictable[path], musici, posi):
+                    music = self.playlist.musictable[path]
+                    if music.check():
+                        continue
+                    if music.pending:
+                        self.mili.text_element(
+                            f"'{parse_music_stem(self.app, music.realstem)}' is being converted...",
+                            {
+                                "size": self.mult(16),
+                                "color": (170,) * 3,
+                                "growx": False,
+                                "slow_grow": True,
+                                "wraplen": self.app.window.size[0] * 0.95,
+                            },
+                            None,
+                            {"offset": self.scroll.get_offset(), "fillx": True},
+                        )
+                        continue
+                    if self.ui_music(music, musici, posi) and not any_pending:
                         break
 
-                if drawn_musics < len(paths):
+                if drawn_musics < len(paths) and not any_pending:
                     to_draw = len(paths) - drawn_musics
                     self.mili.element((0, 0, 10, (self.mult(80) + 3) * to_draw))
 
                 self.mili.text_element(
-                    f"{len(self.playlist.musiclist)} track{"s" if len(self.playlist.musiclist)>1 else ""}",
+                    f"{len(self.playlist.musiclist)} track{
+                        "s" if len(self.playlist.musiclist) > 1 else ""}",
                     {"size": self.mult(19), "color": (170,) * 3},
                     None,
                     {"offset": self.scroll.get_offset()},
@@ -307,7 +326,7 @@ class PlaylistViewerUI(UIComponent):
                     {"align": "center", "blocking": False},
                 )
             self.mili.text_element(
-                music.realstem,
+                parse_music_stem(self.app, music.realstem),
                 {
                     "size": self.mult(18),
                     "growx": False,
@@ -467,6 +486,8 @@ class PlaylistViewerUI(UIComponent):
                     new_idx = len(self.playlist.musiclist) - 1
                 self.playlist.musiclist.remove(self.middle_selected)
                 self.playlist.musiclist.insert(new_idx, self.middle_selected)
+                if self.middle_selected is self.app.music:
+                    self.app.music_index = new_idx
             else:
                 self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
                 self.scrollbar.scroll_moved()

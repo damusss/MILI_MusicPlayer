@@ -24,12 +24,12 @@ try:
 except RuntimeError:
     ...
 
-
 if "win" in sys.platform or os.name == "nt":
     import ctypes
 
-    myappid = "damusss.mili_musicplayer.1.0"
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+        "damusss.mili_musicplayer.1.0"
+    )
 
 
 class MusicPlayerApp(mili.GenericApp):
@@ -77,6 +77,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.loops = True
         self.shuffle = False
         self.custom_title = True
+        self.before_maximize_data = None
+        self.maximized = False
+        self.strip_youtube_id = False
         # status
         self.start_style = mili.PADLESS | {"spacing": 0}
         self.start_time = time.time()
@@ -85,12 +88,11 @@ class MusicPlayerApp(mili.GenericApp):
         self.modal_state = "none"
         self.playlists: list[Playlist] = []
         self.history_data: list[HistoryData] = []
-        self.before_maximize_data = None
-        self.maximized = False
         self.focused = True
         self.ui_mult = 1
         self.input_stolen = False
         self.listening_key = False
+        self.last_save = SAVE_COOLDOWN
         # be effect/mili
         self.bg_effect_image = None
         self.bg_black_image = None
@@ -226,6 +228,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "before_maximize_data": None,
                 "maximized": False,
                 "discord_presence": discord_presence,
+                "strip_youtube_id": False,
                 "keybinds": default_binds,
             },
         )
@@ -241,6 +244,7 @@ class MusicPlayerApp(mili.GenericApp):
             self.keybinds.load_from_data(data.get("keybinds", default_binds))
             self.maximized = data.get("maximized", False)
             self.before_maximize_data = data.get("before_maximize_data", None)
+            self.strip_youtube_id = data.get("strip_youtube_id", False)
         self.target_framerate = self.user_framerate
         if win_pos != self.window.position:
             self.window.position = win_pos
@@ -333,6 +337,9 @@ class MusicPlayerApp(mili.GenericApp):
             self.history_data.pop(0)
 
     def play_music(self, music: MusicData, idx):
+        if music.pending:
+            self.end_music()
+            return
         if self.music is not None:
             self.add_to_history()
         if not os.path.exists(music.audiopath):
@@ -416,6 +423,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "before_maximize_data": self.before_maximize_data,
                 "maximized": self.maximized,
                 "discord_presence": self.discord_presence.active,
+                "strip_youtube_id": self.strip_youtube_id,
                 "keybinds": self.keybinds.get_save_data(),
             },
         )
@@ -425,8 +433,13 @@ class MusicPlayerApp(mili.GenericApp):
                     pygame.image.save(
                         playlist.cover, f"data/covers/{playlist.name}.png"
                     )
+        print("Data saved correctly.")
 
     def update(self):
+        if pygame.time.get_ticks() - self.last_save >= SAVE_COOLDOWN:
+            self.last_save = pygame.time.get_ticks()
+            self.save()
+
         self.target_framerate = self.user_framerate
         if (
             not self.focused

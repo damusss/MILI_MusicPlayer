@@ -10,6 +10,26 @@ def load_cover_async(path, obj):
     obj.cover = pygame.image.load(path).convert()
 
 
+def get_cover_async(music, videofile, cover_path):
+    try:
+        frame: numpy.ndarray = videofile.get_frame(videofile.duration / 2)
+        surface = pygame.image.frombytes(frame.tobytes(), videofile.size, "RGB")
+        pygame.image.save(surface, cover_path)
+        music.cover = surface
+    except Exception:
+        music.cover = None
+
+
+def convert_music_async(music, audiofile, new_path):
+    try:
+        audiofile.write_audiofile(str(new_path), verbose=True)
+        music.pending = False
+    except Exception as e:
+        print("aaa", e)
+        music.load_error = True
+        music.load_exc = e
+
+
 class NotCached: ...
 
 
@@ -58,7 +78,13 @@ class ResizeHandle:
             rel.x *= -1
             rel.y *= -1
             posrel = rel
-        self.app.window.size = self.app.resize_winsize + rel
+        newsize = self.app.resize_winsize + rel
+        if any([v <= 0 for v in newsize]):
+            return
+        ratio = newsize[0] / newsize[1]
+        if ratio < 0.45:
+            newsize = (newsize[1] * 0.46, newsize[1])
+        self.app.window.size = newsize
         if posrel.length() != 0:
             self.app.window.position = self.app.resize_winpos - posrel
         self.app.make_bg_image()
@@ -70,6 +96,9 @@ class MusicData:
     cover: pygame.Surface
     duration: int
     playlist: "Playlist"
+    pending: bool
+    load_error: bool
+    load_exc = None
 
     @classmethod
     def load(cls, realpath, playlist: "Playlist", loading_image=None):
@@ -78,6 +107,9 @@ class MusicData:
         self.playlist = playlist
         self.cover = None
         self.duration = NotCached
+        self.pending = False
+        self.load_error = False
+        self.load_exc = None
 
         cover_path = f"data/music_covers/{playlist.name}_{self.realstem}.png"
         if not os.path.exists(realpath):
@@ -100,55 +132,67 @@ class MusicData:
                 self.audiopath = new_path
                 return self
 
-            with moviepy.VideoFileClip(str(realpath)) as videofile:
-                if not os.path.exists(cover_path):
-                    try:
-                        frame: numpy.ndarray = videofile.get_frame(
-                            videofile.duration / 2
-                        )
-                        surface = pygame.image.frombytes(
-                            frame.tobytes(), videofile.size, "RGB"
-                        )
-                        pygame.image.save(surface, cover_path)
-                        self.cover = surface
-                    except Exception:
-                        self.cover = None
-                else:
-                    self.load_cover_async(cover_path, loading_image)
-
-                if os.path.exists(new_path):
-                    self.audiopath = new_path
-                    return self
-
-                audiofile = videofile.audio
-                if audiofile is None:
-                    pygame.display.message_box(
-                        "Could not load music",
-                        f"Could not convert '{realpath}' to audio format: the video has no associated audio. Music will be skipped",
-                        "error",
-                        None,
-                        ("Understood",),
-                    )
-                    return
+            videofile = moviepy.VideoFileClip(str(realpath))
+            self.videofile = videofile
+            if not os.path.exists(cover_path):
                 try:
-                    audiofile.write_audiofile(str(new_path), verbose=True)
-                except Exception as e:
-                    pygame.display.message_box(
-                        "Could not load music",
-                        f"Could not convert '{realpath}' to audio format due to external exception: '{e}'. Music will be skipped",
-                        "error",
-                        None,
-                        ("Understood",),
+                    self.pending = True
+                    if loading_image is not None:
+                        self.cover = loading_image
+                    thread = threading.Thread(
+                        target=get_cover_async, args=(self, videofile, cover_path)
                     )
-                    return
+                    thread.start()
+                except Exception:
+                    self.cover = None
+            else:
+                self.load_cover_async(cover_path, loading_image)
+
+            if os.path.exists(new_path):
                 self.audiopath = new_path
                 return self
+
+            audiofile = videofile.audio
+            if audiofile is None:
+                pygame.display.message_box(
+                    "Could not load music",
+                    f"Could not convert '{realpath}' to audio format: the video has no associated audio. Music will be skipped",
+                    "error",
+                    None,
+                    ("Understood",),
+                )
+                return
+            self.audiopath = new_path
+            print(audiofile)
+            self.pending = True
+            thread = threading.Thread(
+                target=convert_music_async, args=(self, audiofile, new_path)
+            )
+            thread.start()
+            return self
 
         else:
             if os.path.exists(cover_path):
                 self.load_cover_async(cover_path, loading_image)
             self.audiopath = realpath
             return self
+
+    def check(self):
+        if not self.pending:
+            if hasattr(self, "videofile"):
+                self.videofile.close()
+                del self.videofile
+        if not self.load_error:
+            return False
+        pygame.display.message_box(
+            "Could not load music",
+            f"Could not convert '{self.realpath}' to audio format due to external exception: '{self.load_exc}'. Music will be removed",
+            "error",
+            None,
+            ("Understood",),
+        )
+        self.playlist.remove(self.audiopath)
+        return True
 
     def load_cover_async(self, path, loading_image=None):
         if loading_image is not None:

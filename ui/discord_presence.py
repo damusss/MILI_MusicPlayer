@@ -1,6 +1,7 @@
 import pygame
 import typing
 import threading
+from ui.common import parse_music_stem
 
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
@@ -40,6 +41,8 @@ class DiscordPresence:
             self.pypresence = None
 
     def start(self):
+        if self.connecting:
+            return
         if self.pypresence is None:
             btn = pygame.display.message_box(
                 "Missing pypresence module",
@@ -76,7 +79,8 @@ class DiscordPresence:
         small_text = None
 
         if self.app.music is not None:
-            state = f"Listening to: {self.app.music.realstem}"
+            state = f"Listening to: {parse_music_stem(
+                self.app, self.app.music.realstem)}"
             details = f"Playlist: {self.app.music.playlist.name}"
             start = self.app.music_start_time
             small_image = "mili_miniplayer_icon"
@@ -101,7 +105,8 @@ class DiscordPresence:
         except self.pypresence.PyPresenceException as exc:
             pygame.display.message_box(
                 "Failed to update the discord presence",
-                f"Updating the discord presence raised the following exception: '{exc}'."
+                f"Updating the discord presence raised the following exception: '{
+                    exc}'."
                 "error",
                 None,
                 ("Understood",),
@@ -113,7 +118,7 @@ class DiscordPresence:
                 pass
 
     def update_connecting(self):
-        if pygame.time.get_ticks() - self.connect_start_time >= 5000:
+        if pygame.time.get_ticks() - self.connect_start_time >= 10000:
             self.connecting = False
             self.active = False
             self.connect_error = None
@@ -137,7 +142,8 @@ class DiscordPresence:
         else:
             pygame.display.message_box(
                 "Failed to connect to discord",
-                f"The module 'pypresence' raised this exception while trying to connect to discord: '{self.connect_error}'. "
+                f"The module 'pypresence' raised this exception while trying to connect to discord: '{
+                    self.connect_error}'. "
                 "Make sure discord is installed and open and that you have internet and try to connect again.",
                 "error",
                 None,

@@ -56,6 +56,8 @@ Note that the volume buttons do not change the app's volume. It is advised to le
 
 # Building/Running
 
+On Windows, one can package and run the executable using the `windows_build.py` script (requires `PyInstaller`).
+
 It is adviced to run the following commands after configuring a virtual environment.
 Make sure to be in the folder where the main file is located, then:
 

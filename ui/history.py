@@ -111,7 +111,8 @@ class HistoryUI(UIComponent):
                 {"ignore_grid": True, "blocking": False},
             )
             txt, txtstyle = (
-                f"{int(history.position/60):.0f}:{history.position%60:.0f}/{int(history.duration/60):.0f}:{history.duration%60:.0f}",
+                f"{int(history.position/60):.0f}:{history.position %
+                                                  60:.0f}/{int(history.duration/60):.0f}:{history.duration % 60:.0f}",
                 {"size": self.mult(15), "color": (120,) * 3},
             )
             size = self.mili.text_size(txt, txtstyle)
@@ -140,7 +141,7 @@ class HistoryUI(UIComponent):
                     {"align": "center", "blocking": False},
                 )
             self.mili.text_element(
-                history.music.realstem,
+                parse_music_stem(self.app, history.music.realstem),
                 {
                     "size": self.mult(16),
                     "growx": False,

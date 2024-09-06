@@ -135,7 +135,7 @@ class MusicControlsUI(UIComponent):
     def ui_time(self):
         pos = self.app.get_music_pos()
         txt, txtstyle = (
-            f"{int(pos/60):.0f}:{pos%60:.0f}/{int(self.app.music.duration/60):.0f}:{self.app.music.duration%60:.0f}",
+            f"{int(pos/60):.0f}:{pos % 60:.0f}/{int(self.app.music.duration/60):.0f}:{self.app.music.duration % 60:.0f}",
             {"color": (120,) * 3, "size": self.mult(20)},
         )
         size = self.mili.text_size(txt, txtstyle)
@@ -256,12 +256,11 @@ class MusicControlsUI(UIComponent):
             self.slider.handle_style | {"z": 99999},
         ):
             self.slider.update_handle(handle)
-            self.mili.rect(
+            self.mili.circle(
                 {
                     "color": (255,) * 3,
-                    "border_radius": "50",
-                    "padx": str(75 + self.handle_anim.value),
-                    "pady": str(75 + self.handle_anim.value),
+                    "padx": str((75 + self.handle_anim.value) / 2),
+                    "pady": str((75 + self.handle_anim.value) / 2),
                 }
             )
             if not self.timebar_controlled:
@@ -291,7 +290,7 @@ class MusicControlsUI(UIComponent):
             get_data=True,
         ) as cont:
             txt, txtstyle = (
-                f"{self.app.music.realstem}",
+                f"{parse_music_stem(self.app, self.app.music.realstem)}",
                 {"size": self.mult(22), "align": "left"},
             )
             size = self.mili.text_size(txt, txtstyle).x

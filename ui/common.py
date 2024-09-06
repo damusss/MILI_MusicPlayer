@@ -20,6 +20,7 @@ RESIZE_SIZE = 3
 WIN_MIN_SIZE = (200, 300)
 DISCORD_COOLDOWN = 20000
 BIG_COVER_COOLDOWN = 300
+SAVE_COOLDOWN = 60000 * 3
 
 BG_CV = 3
 MUSIC_CV = 3, 10, 5
@@ -88,6 +89,15 @@ def handle_arrow_scroll(dt, scroll: mili.Scroll, scrollbar: mili.Scrollbar = Non
     scroll.scroll(0, amount * 300 * dt)
     if scrollbar is not None:
         scrollbar.scroll_moved()
+
+
+def parse_music_stem(app: "MusicPlayerApp", stem: str):
+    if app.strip_youtube_id:
+        if len(stem) >= 14:
+            if stem.endswith("]") and stem[-13] == "[" and stem[-14] == " ":
+                return stem[:-14]
+        return stem
+    return stem
 
 
 class UIComponent:

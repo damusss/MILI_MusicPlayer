@@ -23,6 +23,8 @@ class MiniplayerUI:
         self.hovered = False
         self.pressed = False
         self.click_event = False
+        self.start_time = pygame.time.get_ticks()
+        self.mouse_data = []
 
         self.mili.default_styles(
             text={
@@ -59,6 +61,8 @@ class MiniplayerUI:
             pass
         self.canresize = False
         self.focused = True
+        self.start_time = pygame.time.get_ticks()
+        self.mouse_data = []
 
     def action_toggle_border(self):
         if self.canresize:
@@ -127,9 +131,18 @@ class MiniplayerUI:
         res = self.app.sdl2.mouse.SDL_GetGlobalMouseState(
             ctypes.byref(x), ctypes.byref(y)
         )
+        pos = (x.value, y.value)
         self.hovered = pygame.Rect(self.window.position, self.window.size).collidepoint(
-            x.value, y.value
+            pos
         )
+        self.mouse_data.append(pos)
+        if len(self.mouse_data) > 10:
+            self.mouse_data.pop(0)
+        if self.mouse_data[0] == (0, 0) and all(
+            pos == self.mouse_data[0] for pos in self.mouse_data
+        ):
+            if pygame.time.get_ticks() - self.start_time >= 1200:
+                self.app.sdl2 = None
         self.click_event = False
         if res == 1 and self.hovered and not self.pressed:
             self.pressed = True
