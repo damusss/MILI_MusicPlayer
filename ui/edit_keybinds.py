@@ -85,6 +85,10 @@ class EditKeybindsUI(UIComponent):
                         {"color": (cond(self.app, handle, *SHANDLE_CV) * 1.2,) * 3}
                     )
                     self.scrollbar.update_handle(handle)
+                    if (
+                        handle.hovered or handle.unhover_pressed
+                    ) and self.app.can_interact():
+                        self.app.cursor_hover = True
 
     def ui_keybind(self, name, bind: Binding):
         height = self.mult(30)
@@ -93,7 +97,7 @@ class EditKeybindsUI(UIComponent):
             mili.PADLESS
             | mili.X
             | {
-                "fillx": "96.5" if self.scrollbar.needed else True,
+                "fillx": "96.5" if self.scrollbar.needed else "98",
                 "anchor": "max_spacing",
                 "offset": self.scroll.get_offset(),
                 "align": "first",
@@ -143,8 +147,11 @@ class EditKeybindsUI(UIComponent):
                     )
                     self.mili.text(display_txt, {"size": self.mult(15)})
 
-                    if it.left_just_released and self.app.can_interact():
-                        self.start_listening(binding, i)
+                    if self.app.can_interact():
+                        if it.left_just_released:
+                            self.start_listening(binding, i)
+                        if it.hovered or it.unhover_pressed:
+                            self.app.cursor_hover = True
 
     def ui_listening(self):
         with self.mili.begin(

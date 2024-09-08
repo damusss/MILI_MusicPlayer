@@ -96,6 +96,10 @@ class ListViewerUI(UIComponent):
                         {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
                     )
                     self.scrollbar.update_handle(handle)
+                    if (
+                        handle.hovered or handle.unhover_pressed
+                    ) and self.app.can_interact():
+                        self.app.cursor_hover = True
 
     def ui_playlist(self, playlist: Playlist):
         with self.mili.begin(
@@ -105,7 +109,7 @@ class ListViewerUI(UIComponent):
                 "offset": self.scroll.get_offset(),
                 "padx": self.mult(10),
                 "axis": "x",
-                "align": "first" if self.app.ui_mult < 1.1 else "center",
+                "align": "first" if self.app.ui_mult < 1.12 else "center",
             },
         ) as cont:
             self.ui_playlist_bg(playlist, cont)
@@ -129,19 +133,22 @@ class ListViewerUI(UIComponent):
             )
             self.ui_playlist_helper(playlist)
 
-            if cont.left_just_released and self.app.can_interact():
-                self.app.playlist_viewer.enter(playlist)
-            elif (
-                cont.just_released_button == pygame.BUTTON_RIGHT
-                and self.app.can_interact()
-            ):
-                self.app.open_menu(
-                    playlist,
-                    (self.app.rename_image, self.action_rename, self.menu_anims[0]),
-                    (self.app.delete_image, self.action_delete, self.menu_anims[1]),
-                )
-            elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
-                self.middle_selected = playlist
+            if self.app.can_interact():
+                if cont.hovered or cont.unhover_pressed:
+                    self.app.cursor_hover = True
+                if cont.left_just_released:
+                    self.app.playlist_viewer.enter(playlist)
+                elif (
+                    cont.just_released_button == pygame.BUTTON_RIGHT
+                    and self.app.can_interact()
+                ):
+                    self.app.open_menu(
+                        playlist,
+                        (self.app.rename_image, self.action_rename, self.menu_anims[0]),
+                        (self.app.delete_image, self.action_delete, self.menu_anims[1]),
+                    )
+                elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
+                    self.middle_selected = playlist
 
     def ui_playlist_helper(self, playlist):
         if self.middle_selected is playlist:

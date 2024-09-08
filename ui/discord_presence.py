@@ -106,7 +106,7 @@ class DiscordPresence:
             pygame.display.message_box(
                 "Failed to update the discord presence",
                 f"Updating the discord presence raised the following exception: '{
-                    exc}'."
+                    exc}'.",
                 "error",
                 None,
                 ("Understood",),

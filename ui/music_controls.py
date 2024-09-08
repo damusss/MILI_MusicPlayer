@@ -2,6 +2,7 @@ import mili
 import pygame
 import random
 from ui.common import *
+from ui.data import NotCached
 from ui.miniplayer import MiniplayerUI
 
 
@@ -110,13 +111,17 @@ class MusicControlsUI(UIComponent):
                 self.app.playlist_viewer.scrollbar.scroll_moved()
             if it.absolute_hover and self.app.can_interact():
                 bigcover = True
+                self.app.cursor_hover = True
         else:
             self.mili.element((0, 0, 0, 0))
         self.ui_controls_cont()
         return bigcover
 
     def ui_track_control(self):
-        if self.app.music.pos_supported or self.app.music.duration is None:
+        if self.app.music.pos_supported and self.app.music.duration not in [
+            None,
+            NotCached,
+        ]:
             if self.small_cont:
                 self.ui_small_slider()
             else:
@@ -252,6 +257,9 @@ class MusicControlsUI(UIComponent):
                 newpos = pygame.math.clamp(relmpos / sbar.absolute_rect.w, 0, 1)
                 self.timebar_pos = newpos
                 self.slider.valuex = newpos
+                self.app.cursor_hover = True
+            elif sbar.absolute_hover:
+                self.app.cursor_hover = True
 
     def ui_slider_handle(self, percentage):
         if handle := self.mili.element(
@@ -284,6 +292,8 @@ class MusicControlsUI(UIComponent):
                     self.handle_anim.goto_b()
                 if handle.just_unhovered:
                     self.handle_anim.goto_a()
+                if handle.hovered or handle.unhover_pressed:
+                    self.app.cursor_hover = True
         return handle
 
     def ui_controls_cont(self):
@@ -395,7 +405,7 @@ class MusicControlsUI(UIComponent):
             (0, 0, self.mult(size), self.mult(size)),
             {"align": "center", "clip_draw": False},
         ):
-            if it.hovered and self.app.can_interact():
+            if (it.hovered or it.unhover_pressed) and self.app.can_interact():
                 (self.mili.rect if special else self.mili.circle)(
                     {
                         "color": (cond(self.app, it, *CONTROLS_CV),) * 3,
@@ -403,15 +413,17 @@ class MusicControlsUI(UIComponent):
                     }
                     | mili.style.same(anim.value, "padx", "pady")
                 )
+                self.app.cursor_hover = True
             self.mili.image(
                 image,
                 {"cache": mili.ImageCache.get_next_cache()}
                 | mili.style.same(self.mult(1) + anim.value, "padx", "pady"),
             )
-            if it.left_just_released and self.app.can_interact():
-                action()
-            if it.just_hovered and self.app.can_interact():
-                anim.goto_b()
+            if self.app.can_interact():
+                if it.left_just_released:
+                    action()
+                if it.just_hovered:
+                    anim.goto_b()
             if it.just_unhovered:
                 anim.goto_a()
 
@@ -419,14 +431,13 @@ class MusicControlsUI(UIComponent):
         self.music_videoclip_cover = None
         if not self.app.focused and self.minip.window is None:
             return
+        if self.app.music.duration in [None, NotCached]:
+            return
         if self.app.music_paused:
             self.music_videoclip_cover = self.last_videoclip_cover
             return
         if self.app.music_videoclip is not None:
-            pos = (
-                self.app.music_play_offset
-                + (pygame.time.get_ticks() - self.app.music_play_time) / 1000
-            )
+            pos = self.app.get_music_pos()
             if pos >= self.app.music.duration:
                 self.music_videoclip_cover = SURF
                 return

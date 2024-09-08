@@ -76,6 +76,13 @@ You can use the `health_check.py` script to check for unused files in the data f
 
 User data is not stored in `AppData` or equivalent, rather in the `data/` folder where the main file is in.
 
+# Hidden Settings
+
+There are 2 settings that can only be accessed in the `data/settings.json` file.
+
+- `"strip_youtube_id"`: Downloaded videos from youtube might have an ID in square brackets at the end of the filename. If this setting is set to `true`, such pattern will be stripped from the display name.
+- `taskbar_height`: When this number is different from 0, when the custom titlebar is enabled, it ensures the taskbar is still visible when the window gets maximized. A common value for it is `30`. Only works if the taskbar is at the bottom. A (default) value of 0 will result in fullscreen maximized.
+
 # Dependencies
 
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)

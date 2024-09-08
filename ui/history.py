@@ -10,9 +10,10 @@ class HistoryUI(UIComponent):
         self.anim_clear = animation(-2)
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
+        self.scrollbar = mili.Scrollbar(self.scroll, 7, 0, 0, 0, "y")
 
     def ui(self):
-        handle_arrow_scroll(self.app.delta_time, self.scroll)
+        handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
 
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
@@ -24,7 +25,7 @@ class HistoryUI(UIComponent):
             with self.mili.begin(
                 (0, 0, 0, 0),
                 {
-                    "fillx": "80",
+                    "fillx": "90",
                     "filly": "75",
                     "align": "center",
                     "spacing": self.mult(13),
@@ -60,6 +61,7 @@ class HistoryUI(UIComponent):
             None, {"fillx": True, "filly": True} | mili.PADLESS, get_data=True
         ) as cont:
             self.scroll.update(cont)
+            self.scrollbar.update(cont)
             for history in reversed(self.app.history_data):
                 self.ui_history(history)
             if len(self.app.history_data) <= 0:
@@ -69,7 +71,24 @@ class HistoryUI(UIComponent):
                     None,
                     {"align": "center"},
                 )
+            self.ui_scrollbar()
         self.mili.element((0, 0, 0, self.mult(4)))
+
+    def ui_scrollbar(self):
+        if self.scrollbar.needed:
+            with self.mili.begin(self.scrollbar.bar_rect, self.scrollbar.bar_style):
+                self.mili.rect({"color": (SBAR_CV * 1.5,) * 3})
+                if handle := self.mili.element(
+                    self.scrollbar.handle_rect, self.scrollbar.handle_style
+                ):
+                    self.mili.rect(
+                        {"color": (cond(self.app, handle, *SHANDLE_CV) * 1.2,) * 3}
+                    )
+                    self.scrollbar.update_handle(handle)
+                    if (
+                        handle.hovered or handle.unhover_pressed
+                    ) and self.app.can_interact():
+                        self.app.cursor_hover = True
 
     def ui_history(self, history: HistoryData):
         if history.duration == "not cached" and history.music.pos_supported:
@@ -78,12 +97,15 @@ class HistoryUI(UIComponent):
         with self.mili.begin(
             (0, 0, 0, 0),
             {
-                "fillx": True,
+                "fillx": "97" if self.scrollbar.needed else "99",
                 "resizey": True,
                 "anchor": "first",
                 "offset": self.scroll.get_offset(),
                 "pady": 2,
                 "spacing": 0,
+                "align": "first"
+                if (self.scrollbar.needed or self.app.ui_mult < 1.12)
+                else "center",
             },
             get_data=True,
         ) as it:
@@ -91,8 +113,11 @@ class HistoryUI(UIComponent):
             self.ui_history_title(history)
             self.ui_history_time(history, it.rect)
 
-            if it.left_just_released and self.app.can_interact():
-                self.restore_history(history)
+            if self.app.can_interact():
+                if it.left_just_released:
+                    self.restore_history(history)
+                if it.hovered or it.unhover_pressed:
+                    self.app.cursor_hover = True
 
     def ui_history_time(self, history, cont_rect):
         if history.music.pos_supported:
@@ -177,7 +202,7 @@ class HistoryUI(UIComponent):
         if self.app.listening_key:
             return False
         if event.type == pygame.MOUSEWHEEL:
-            handle_wheel_scroll(event, self.app, self.scroll)
+            handle_wheel_scroll(event, self.app, self.scroll, self.scrollbar)
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.back()

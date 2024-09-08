@@ -25,8 +25,6 @@ def convert_music_async(music, audiofile, new_path):
         audiofile.write_audiofile(str(new_path), verbose=True)
         music.pending = False
     except Exception as e:
-        print("aaa", e)
-        music.load_error = True
         music.load_exc = e
 
 
@@ -97,7 +95,6 @@ class MusicData:
     duration: int
     playlist: "Playlist"
     pending: bool
-    load_error: bool
     load_exc = None
 
     @classmethod
@@ -108,7 +105,6 @@ class MusicData:
         self.cover = None
         self.duration = NotCached
         self.pending = False
-        self.load_error = False
         self.load_exc = None
 
         cover_path = f"data/music_covers/{playlist.name}_{self.realstem}.png"
@@ -163,7 +159,6 @@ class MusicData:
                 )
                 return
             self.audiopath = new_path
-            print(audiofile)
             self.pending = True
             thread = threading.Thread(
                 target=convert_music_async, args=(self, audiofile, new_path)
@@ -182,7 +177,7 @@ class MusicData:
             if hasattr(self, "videofile"):
                 self.videofile.close()
                 del self.videofile
-        if not self.load_error:
+        if self.load_exc is None:
             return False
         pygame.display.message_box(
             "Could not load music",
@@ -241,8 +236,9 @@ class HistoryData:
         if duration is NotCached:
             duration = "not cached"
         self.duration = duration
-        if int(self.position) >= int(self.duration - 0.01):
-            self.position = 0
+        if self.duration not in [None, "not cached"]:
+            if int(self.position) >= int(self.duration - 0.01):
+                self.position = 0
 
     def get_save_data(self):
         duration = self.duration

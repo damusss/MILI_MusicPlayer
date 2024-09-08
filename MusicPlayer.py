@@ -80,6 +80,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.before_maximize_data = None
         self.maximized = False
         self.strip_youtube_id = False
+        self.taskbar_height = 0
         # status
         self.start_style = mili.PADLESS | {"spacing": 0}
         self.start_time = time.time()
@@ -93,6 +94,8 @@ class MusicPlayerApp(mili.GenericApp):
         self.input_stolen = False
         self.listening_key = False
         self.last_save = SAVE_COOLDOWN
+        self.stolen_cursor = False
+        self.cursor_hover = False
         # be effect/mili
         self.bg_effect_image = None
         self.bg_black_image = None
@@ -229,6 +232,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "maximized": False,
                 "discord_presence": discord_presence,
                 "strip_youtube_id": False,
+                "taskbar_height": 0,
                 "keybinds": default_binds,
             },
         )
@@ -245,6 +249,7 @@ class MusicPlayerApp(mili.GenericApp):
             self.maximized = data.get("maximized", False)
             self.before_maximize_data = data.get("before_maximize_data", None)
             self.strip_youtube_id = data.get("strip_youtube_id", False)
+            self.taskbar_height = data.get("taskbar_height", 0)
         self.target_framerate = self.user_framerate
         if win_pos != self.window.position:
             self.window.position = win_pos
@@ -424,6 +429,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "maximized": self.maximized,
                 "discord_presence": self.discord_presence.active,
                 "strip_youtube_id": self.strip_youtube_id,
+                "taskbar_height": self.taskbar_height,
                 "keybinds": self.keybinds.get_save_data(),
             },
         )
@@ -455,10 +461,10 @@ class MusicPlayerApp(mili.GenericApp):
         ):
             self.target_framerate = 10
 
+        self.stolen_cursor = False
+        self.cursor_hover = False
         if self.custom_title:
-            self.update_borders()
-        elif self.focused:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            self.stolen_cursor = self.update_borders()
 
         ratio = self.window.size[0] / self.window.size[1]
         if ratio < 0.45:
@@ -494,7 +500,7 @@ class MusicPlayerApp(mili.GenericApp):
 
     def update_borders(self):
         if not self.can_abs_interact():
-            return
+            return True
         self.window_stop_special = False
 
         just = pygame.mouse.get_just_pressed()[0]
@@ -504,18 +510,16 @@ class MusicPlayerApp(mili.GenericApp):
         for handle in self.resize_handles:
             handle.make_rect()
 
-        anyhover = False
+        stolen_cursor = False
         if not self.window_resize:
             if self.tbar_rect.collidepoint(mpos):
-                anyhover = True
                 pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+                stolen_cursor = True
             for handle in self.resize_handles:
                 if handle.rect.collidepoint(mpos):
                     pygame.mouse.set_cursor(handle.cursor)
-                    anyhover = True
+                    stolen_cursor = True
                     break
-            if not anyhover:
-                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
         if just:
             for handle in self.resize_handles:
@@ -535,7 +539,7 @@ class MusicPlayerApp(mili.GenericApp):
             self.window_resize = False
 
         if self.window_resize:
-            return
+            return stolen_cursor
 
         if just and self.tbar_rect.collidepoint(mpos):
             self.drag_rel_pos = mpos
@@ -561,6 +565,7 @@ class MusicPlayerApp(mili.GenericApp):
                 self.window_stop_special = True
             self.window_drag = False
             self.window_drag_effective = False
+        return stolen_cursor
 
     def ui(self):
         self.mili.rect({"color": (BG_CV,) * 3, "border_radius": 0})
@@ -605,6 +610,11 @@ class MusicPlayerApp(mili.GenericApp):
                     self.settings_image,
                     "bottom",
                 )
+
+        if not self.stolen_cursor and self.cursor_hover:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        elif not self.stolen_cursor:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
     def ui_top(self):
         if self.custom_title:
@@ -714,15 +724,13 @@ class MusicPlayerApp(mili.GenericApp):
                 {"color": (cond(self, it, *OVERLAY_CV),) * 3, "border_radius": "50"}
                 | mili.style.same(int(anim.value / 1.8), "padx", "pady")
             )
-            if isinstance(line_points_or_image, pygame.Surface):
-                self.mili.image(
-                    line_points_or_image,
-                    {"cache": mili.ImageCache.get_next_cache()}
-                    | mili.style.same(self.mult(8 + anim.value / 1.8), "padx", "pady"),
-                )
-            else:
-                self.mili.line(line_points_or_image[0], {"size": "5"})
-                self.mili.line(line_points_or_image[1], {"size": "5"})
+            self.mili.image(
+                line_points_or_image,
+                {"cache": mili.ImageCache.get_next_cache()}
+                | mili.style.same(self.mult(8 + anim.value / 1.8), "padx", "pady"),
+            )
+            if (it.hovered or it.unhover_pressed) and self.can_interact():
+                self.cursor_hover = True
             if it.just_hovered and self.can_interact():
                 anim.goto_b()
             elif it.just_unhovered:
@@ -778,15 +786,13 @@ class MusicPlayerApp(mili.GenericApp):
                 {"color": color, "border_radius": 0}
                 | mili.style.same(int(anim.value), "padx", "pady")
             )
-            if isinstance(line_points_or_image, pygame.Surface):
-                self.mili.image(
-                    line_points_or_image,
-                    {"cache": mili.ImageCache.get_next_cache(), "smoothscale": True}
-                    | mili.style.same(self.mult(3 + anim.value), "padx", "pady"),
-                )
-            else:
-                self.mili.line(line_points_or_image[0], {"size": "5"})
-                self.mili.line(line_points_or_image[1], {"size": "5"})
+            self.mili.image(
+                line_points_or_image,
+                {"cache": mili.ImageCache.get_next_cache(), "smoothscale": True}
+                | mili.style.same(self.mult(3 + anim.value), "padx", "pady"),
+            )
+            if (it.hovered or it.unhover_pressed) and self.can_interact():
+                self.cursor_hover = True
             if it.just_hovered and self.can_interact():
                 anim.goto_b()
             elif it.just_unhovered:
@@ -815,6 +821,8 @@ class MusicPlayerApp(mili.GenericApp):
                 mili.style.same(self.mult(3) + anim.value, "padx", "pady")
                 | {"smoothscale": True},
             )
+            if (it.hovered or it.unhover_pressed) and self.can_interact():
+                self.cursor_hover = True
             if it.left_just_released and self.can_interact():
                 action()
             if it.just_hovered and self.can_interact():
@@ -854,7 +862,8 @@ class MusicPlayerApp(mili.GenericApp):
         else:
             self.before_maximize_data = self.window.position, self.window.size
             self.window.position = (0, 0)
-            self.window.size = pygame.display.get_desktop_sizes()[0]
+            desktop_size = pygame.display.get_desktop_sizes()[0]
+            self.window.size = (desktop_size[0], desktop_size[1] - self.taskbar_height)
             self.maximized = True
         self.make_bg_image()
 
@@ -932,6 +941,23 @@ class MusicPlayerApp(mili.GenericApp):
                 elif Keybinds.check("open_history", event):
                     self.open_settings()
                     self.settings.action_history()
+
+    def quit(self):
+        for playlist in self.playlists:
+            for music in playlist.musiclist:
+                if music.pending:
+                    pygame.display.message_box(
+                        "Wait before closing",
+                        "Some tracks are still being converted. Please wait until they are converted "
+                        "before closing the application, otherwise the files will be corrupted.",
+                        "warn",
+                        None,
+                        ("Understood",),
+                    )
+                    return
+        self.on_quit()
+        pygame.quit()
+        raise SystemExit
 
 
 if __name__ == "__main__":

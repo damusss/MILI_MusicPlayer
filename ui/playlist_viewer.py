@@ -201,6 +201,10 @@ class PlaylistViewerUI(UIComponent):
                         {"color": (cond(self.app, handle, *SHANDLE_CV),) * 3}
                     )
                     self.scrollbar.update_handle(handle)
+                    if (
+                        handle.hovered or handle.unhover_pressed
+                    ) and self.app.can_interact():
+                        self.app.cursor_hover = True
 
     def ui_title(self):
         ret = False
@@ -223,6 +227,7 @@ class PlaylistViewerUI(UIComponent):
                         and self.app.can_interact()
                     ):
                         ret = True
+                        self.app.cursor_hover = True
                     self.ui_title_txt()
             else:
                 self.ui_title_txt()
@@ -260,9 +265,12 @@ class PlaylistViewerUI(UIComponent):
                 self.mili.image(
                     self.backspace_image, {"cache": mili.ImageCache.get_next_cache()}
                 )
-                if it.left_just_released and self.app.can_interact():
-                    self.search_entryline.text = ""
-                    self.search_entryline.cursor = 0
+                if self.app.can_interact():
+                    if it.left_just_released:
+                        self.search_entryline.text = ""
+                        self.search_entryline.cursor = 0
+                    if it.hovered or it.unhover_pressed:
+                        self.app.cursor_hover = True
 
     def ui_big_cover(self):
         self.mili.image_element(
@@ -308,7 +316,7 @@ class PlaylistViewerUI(UIComponent):
                 "offset": self.scroll.get_offset(),
                 "padx": self.mult(8),
                 "axis": "x",
-                "align": "first" if self.app.ui_mult < 1.1 else "center",
+                "align": "first" if self.app.ui_mult < 1.12 else "center",
                 "anchor": "first",
             },
         ) as cont:
@@ -338,20 +346,20 @@ class PlaylistViewerUI(UIComponent):
                 (0, 0, self.app.window.size[0] / 1.1 - imagesize, self.mult(80) / 1.1),
                 {"align": "first", "blocking": False},
             )
-            if cont.left_just_released and self.app.can_interact():
-                self.action_start_playing(music, idx)
-            if (
-                cont.just_released_button == pygame.BUTTON_RIGHT
-                and self.app.can_interact()
-            ):
-                self.app.open_menu(
-                    music,
-                    (self.app.rename_image, self.action_rename, self.menu_anims[0]),
-                    (self.forward_image, self.action_forward, self.menu_anims[1]),
-                    (self.app.delete_image, self.action_delete, self.menu_anims[2]),
-                )
-            elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
-                self.middle_selected = music
+            if self.app.can_interact():
+                if cont.hovered or cont.unhover_pressed:
+                    self.app.cursor_hover = True
+                if cont.left_just_released:
+                    self.action_start_playing(music, idx)
+                elif cont.just_released_button == pygame.BUTTON_RIGHT:
+                    self.app.open_menu(
+                        music,
+                        (self.app.rename_image, self.action_rename, self.menu_anims[0]),
+                        (self.forward_image, self.action_forward, self.menu_anims[1]),
+                        (self.app.delete_image, self.action_delete, self.menu_anims[2]),
+                    )
+                elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
+                    self.middle_selected = music
         return False
 
     def ui_music_bg(self, path, cont):

@@ -9,10 +9,11 @@ class MoveMusicUI(UIComponent):
         self.anim_close = animation(-5)
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
+        self.scrollbar = mili.Scrollbar(self.scroll, 7, 0, 0, 0, "y")
         self.music: MusicData = None
 
     def ui(self):
-        handle_arrow_scroll(self.app.delta_time, self.scroll)
+        handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
 
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
@@ -42,11 +43,15 @@ class MoveMusicUI(UIComponent):
                     {
                         "color": (150,) * 3,
                         "size": self.mult(18),
+                        "slow_grow": True,
+                        "growx": False,
+                        "wraplen": "100",
                     },
-                    None,
-                    {"align": "center"},
+                    (0, 0, mili.percentage(80, self.app.window.size[0]), 0),
+                    {"align": "center", "fillx": True},
                 )
                 self.ui_playlists()
+                self.mili.element((0, 0, 0, self.mult(5)))
 
             self.app.ui_overlay_btn(
                 self.anim_close,
@@ -59,6 +64,7 @@ class MoveMusicUI(UIComponent):
             None, {"fillx": True, "filly": True}, get_data=True
         ) as cont:
             self.scroll.update(cont)
+            self.scrollbar.update(cont)
             for playlist in self.app.playlists:
                 if playlist is self.app.playlist_viewer.playlist:
                     continue
@@ -66,10 +72,13 @@ class MoveMusicUI(UIComponent):
                 with self.mili.begin(
                     (0, 0, 0, self.mult(60)),
                     {
-                        "fillx": True,
+                        "fillx": "98" if self.scrollbar.needed else True,
                         "anchor": "first",
                         "axis": "x",
                         "offset": self.scroll.get_offset(),
+                        "align": "first"
+                        if (self.scrollbar.needed or self.app.ui_mult < 1.12)
+                        else "center",
                     },
                 ) as it:
                     self.mili.rect({"color": (cond(self.app, it, *LISTM_CV),) * 3})
@@ -89,8 +98,28 @@ class MoveMusicUI(UIComponent):
                         None,
                         {"align": "center", "blocking": False},
                     )
-                    if it.left_just_released and self.app.can_interact():
-                        self.move(playlist)
+                    if self.app.can_interact():
+                        if it.left_just_released:
+                            self.move(playlist)
+                        if it.hovered or it.unhover_pressed:
+                            self.app.cursor_hover = True
+            self.ui_scrollbar()
+
+    def ui_scrollbar(self):
+        if self.scrollbar.needed:
+            with self.mili.begin(self.scrollbar.bar_rect, self.scrollbar.bar_style):
+                self.mili.rect({"color": (SBAR_CV * 1.5,) * 3})
+                if handle := self.mili.element(
+                    self.scrollbar.handle_rect, self.scrollbar.handle_style
+                ):
+                    self.mili.rect(
+                        {"color": (cond(self.app, handle, *SHANDLE_CV) * 1.2,) * 3}
+                    )
+                    self.scrollbar.update_handle(handle)
+                    if (
+                        handle.hovered or handle.unhover_pressed
+                    ) and self.app.can_interact():
+                        self.app.cursor_hover = True
 
     def move(self, playlist: Playlist):
         if self.music == self.app.music:
@@ -122,7 +151,7 @@ class MoveMusicUI(UIComponent):
         if self.app.listening_key:
             return False
         if event.type == pygame.MOUSEWHEEL:
-            handle_wheel_scroll(event, self.app, self.scroll)
+            handle_wheel_scroll(event, self.app, self.scroll, self.scrollbar)
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()

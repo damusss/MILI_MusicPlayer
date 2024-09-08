@@ -92,8 +92,11 @@ class NewPlaylistUI(UIComponent):
             (0, 0, 0, self.mult(20)),
             {"fillx": True, "blocking": False},
         )
-        if cont.left_just_released and self.app.can_interact():
-            self.create_type = ctype
+        if self.app.can_interact():
+            if cont.left_just_released:
+                self.create_type = ctype
+            if cont.hovered or cont.unhover_pressed:
+                self.app.cursor_hover = True
 
     def ui_empty_playlist_modal(self):
         self.entryline.update(self.app)

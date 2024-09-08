@@ -176,6 +176,9 @@ class SettingsUI(UIComponent):
                 volume = pygame.math.clamp(relmpos / bar.absolute_rect.w, 0, 1)
                 self.change_volume(volume)
                 self.slider.valuex = volume
+                self.app.cursor_hover = True
+            elif bar.absolute_hover:
+                self.app.cursor_hover = True
 
     def ui_slider_handle(self):
         if handle := self.mili.element(
@@ -204,6 +207,8 @@ class SettingsUI(UIComponent):
                     self.change_volume()
                 else:
                     self.slider.valuex = self.app.volume
+                if handle.hovered or handle.unhover_pressed:
+                    self.app.cursor_hover = True
         return handle
 
     def change_volume(self, value=None):
