@@ -271,7 +271,7 @@ class PlaylistViewerUI(UIComponent):
             ((0, 0), self.app.window.size),
             {"ignore_grid": True, "parent_id": 0, "z": 99999, "blocking": False},
         )
-        size = mili.percentage(85, min(self.app.window.size))
+        size = mili.percentage(90, min(self.app.window.size))
         self.mili.image_element(
             self.playlist.cover,
             {"cache": self.bigcover_cache, "smoothscale": True},
@@ -489,8 +489,7 @@ class PlaylistViewerUI(UIComponent):
                 if self.middle_selected is self.app.music:
                     self.app.music_index = new_idx
             else:
-                self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
-                self.scrollbar.scroll_moved()
+                handle_wheel_scroll(event, self.app, self.scroll, self.scrollbar)
 
         self.shortcuts_event(event, modal_exit)
 

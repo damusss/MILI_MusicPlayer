@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
 
 PREFERRED_SIZES = (415, 700)
 MINIP_PREFERRED_SIZES = 200, 200
-UI_SIZES = (450, 700)
+UI_SIZES = (480, 720)
 SURF = pygame.Surface((10, 10), pygame.SRCALPHA)
 FORMATS = ["mp4", "wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
 POS_SUPPORTED = ["mp4", "mp3", "ogg", "flac", "mod"]
@@ -20,7 +20,7 @@ RESIZE_SIZE = 3
 WIN_MIN_SIZE = (200, 300)
 DISCORD_COOLDOWN = 20000
 BIG_COVER_COOLDOWN = 300
-SAVE_COOLDOWN = 60000 * 3
+SAVE_COOLDOWN = 60000 * 2
 
 BG_CV = 3
 MUSIC_CV = 3, 10, 5
@@ -37,7 +37,7 @@ LISTM_CV = 20, 25, 18
 KEYB_CV = 20, 32, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
-ALPHA = 120
+ALPHA = 170
 BORDER_CV = 100
 TOPB_CV = 15, 25, 8
 
@@ -86,7 +86,18 @@ def handle_arrow_scroll(dt, scroll: mili.Scroll, scrollbar: mili.Scrollbar = Non
         amount -= 1
     if any([keys[key] for key in downbind.get_keycodes()]):
         amount += 1
-    scroll.scroll(0, amount * 300 * dt)
+    scroll.scroll(0, amount * 600 * dt)
+    if scrollbar is not None:
+        scrollbar.scroll_moved()
+
+
+def handle_wheel_scroll(
+    event: pygame.Event,
+    app: "MusicPlayerApp",
+    scroll: mili.Scroll,
+    scrollbar: mili.Scrollbar = None,
+):
+    scroll.scroll(0, -(event.y * 50) * app.ui_mult)
     if scrollbar is not None:
         scrollbar.scroll_moved()
 

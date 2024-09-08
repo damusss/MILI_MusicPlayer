@@ -249,8 +249,7 @@ class EditKeybindsUI(UIComponent):
 
     def event(self, event):
         if event.type == pygame.MOUSEWHEEL and not self.app.listening_key:
-            self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
-            self.scrollbar.scroll_moved()
+            handle_wheel_scroll(event, self.app, self.scroll, self.scrollbar)
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             if self.app.listening_key:

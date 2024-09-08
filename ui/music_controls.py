@@ -99,7 +99,10 @@ class MusicControlsUI(UIComponent):
                 {"align": "first", "blocking": True},
             )
             if it.left_just_released and self.app.can_interact():
-                if self.app.view_state != "playlist":
+                if (
+                    self.app.view_state != "playlist"
+                    or self.app.playlist_viewer.playlist is not self.app.music.playlist
+                ):
                     self.app.playlist_viewer.enter(self.app.music.playlist)
                 self.app.playlist_viewer.scroll.set_scroll(
                     0, self.app.music_index * (self.app.mult(80) + 3)
@@ -326,7 +329,7 @@ class MusicControlsUI(UIComponent):
             ((0, 0), self.app.window.size),
             {"ignore_grid": True, "parent_id": 0, "z": 99999, "blocking": False},
         )
-        size = mili.percentage(85, min(self.app.window.size))
+        size = mili.percentage(90, min(self.app.window.size))
         self.mili.image_element(
             cover,
             {"cache": self.bigcover_cache, "smoothscale": True},

@@ -467,7 +467,7 @@ class MusicPlayerApp(mili.GenericApp):
 
         multx = self.window.size[0] / UI_SIZES[0]
         multy = self.window.size[1] / UI_SIZES[1]
-        self.ui_mult = max(0.3, (multx * 0.1 + multy * 1) / 1.1)
+        self.ui_mult = min(1.2, max(0.4, (multx * 0.1 + multy * 1) / 1.1))
 
         if self.custom_title:
             self.tbarh = 30

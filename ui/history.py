@@ -177,7 +177,7 @@ class HistoryUI(UIComponent):
         if self.app.listening_key:
             return False
         if event.type == pygame.MOUSEWHEEL:
-            self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
+            handle_wheel_scroll(event, self.app, self.scroll)
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.back()

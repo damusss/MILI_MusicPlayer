@@ -26,6 +26,12 @@ A MILI UI demo featuring a rich music player.<br>
   - Loop (playlist/music), Shuffle
   - Miniplayer
 
+# Special Gestures
+
+- Hold the mouse wheel button and scroll to reorder playlists and musics
+- Click on the currently playing track's cover/video to jump to the track in the playlist
+- Hover a playlist's cover or the currently playing track's cover/video for a fraction of a second to view it full screen
+
 # Keyboard Shortcuts
 
 Keybinds are configurable in the settings.

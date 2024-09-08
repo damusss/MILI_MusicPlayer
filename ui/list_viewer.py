@@ -237,8 +237,7 @@ class ListViewerUI(UIComponent):
                 self.app.playlists.remove(self.middle_selected)
                 self.app.playlists.insert(new_idx, self.middle_selected)
             else:
-                self.scroll.scroll(0, -(event.y * 40) * self.app.ui_mult)
-                self.scrollbar.scroll_moved()
+                handle_wheel_scroll(event, self.app, self.scroll, self.scrollbar)
 
         if self.modal_state == "new_playlist":
             self.new_playlist.event(event)
