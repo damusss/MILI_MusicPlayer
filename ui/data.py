@@ -252,7 +252,7 @@ class HistoryData:
         }
 
     @classmethod
-    def load_from_data(self, data, app):
+    def load_from_data(self, data: dict, app: "MusicPlayerApp"):
         playlist = None
         for pobj in app.playlists:
             if pobj.name == data["playlist"]:

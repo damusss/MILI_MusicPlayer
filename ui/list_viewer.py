@@ -23,7 +23,7 @@ class ListViewerUI(UIComponent):
     def ui_top_buttons(self):
         if self.app.custom_title:
             return
-        self.app.ui_overlay_top_btn(
+        self.ui_overlay_top_btn(
             self.anim_toggle,
             self.app.toggle_custom_title,
             self.app.resize_image,
@@ -73,7 +73,7 @@ class ListViewerUI(UIComponent):
                 )
 
         if self.modal_state == "none" and self.app.modal_state == "none":
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_add_playlist,
                 self.action_new,
                 self.app.playlistadd_image,

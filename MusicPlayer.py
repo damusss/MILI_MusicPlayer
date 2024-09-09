@@ -71,6 +71,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.discord_presence = DiscordPresence(self)
         self.keybinds = Keybinds(self)
         self.edit_keybinds = EditKeybindsUI(self)
+        self.prefabs = UIComponent(self)
         # settings
         self.user_framerate = 60
         self.volume = 1
@@ -604,7 +605,7 @@ class MusicPlayerApp(mili.GenericApp):
                 and self.list_viewer.modal_state == "none"
                 and self.modal_state == "none"
             ):
-                self.ui_overlay_btn(
+                self.prefabs.ui_overlay_btn(
                     self.anim_settings,
                     self.open_settings,
                     self.settings_image,
@@ -623,24 +624,24 @@ class MusicPlayerApp(mili.GenericApp):
             ):
                 self.mili.rect({"border_radius": 0, "color": (BORDER_CV / 8,) * 3})
 
-                self.ui_overlay_top_btn(
+                self.prefabs.ui_overlay_top_btn(
                     self.anims[0], self.quit, self.close_image, "right", red=True
                 )
-                self.ui_overlay_top_btn(
+                self.prefabs.ui_overlay_top_btn(
                     self.anims[1],
                     self.action_maximize,
                     self.maximize_image,
                     "right",
                     1,
                 )
-                self.ui_overlay_top_btn(
+                self.prefabs.ui_overlay_top_btn(
                     self.anims[2],
                     self.action_minimize,
                     self.minimize_image,
                     "right",
                     2,
                 )
-                self.ui_overlay_top_btn(
+                self.prefabs.ui_overlay_top_btn(
                     self.anims[3],
                     self.toggle_custom_title,
                     self.resize_image,
@@ -652,7 +653,7 @@ class MusicPlayerApp(mili.GenericApp):
                 elif self.view_state == "list":
                     self.list_viewer.ui_top_buttons()
         else:
-            self.ui_overlay_top_btn(
+            self.prefabs.ui_overlay_top_btn(
                 self.anims[0],
                 self.quit,
                 self.close_image,
@@ -688,147 +689,11 @@ class MusicPlayerApp(mili.GenericApp):
                 {"color": (MENU_CV[1],) * 3, "border_radius": "50", "outline": 1}
             )
             for bimage, baction, banim in self.menu_buttons:
-                self.ui_image_btn(bimage, baction, banim, 50)
+                self.prefabs.ui_image_btn(bimage, baction, banim, 50)
             if not menu.absolute_hover and any(
                 [btn is True for btn in pygame.mouse.get_pressed()]
             ):
                 self.close_menu()
-
-    def ui_overlay_btn(self, anim, on_action, line_points_or_image, side="bottom"):
-        size = self.mult(55)
-        offset = self.mult(8)
-        xoffset = offset * 0.8
-        if (self.view_state == "list" and self.list_viewer.scrollbar.needed) or (
-            self.view_state == "playlist" and self.playlist_viewer.scrollbar.needed
-        ):
-            xoffset = offset * 1.5
-        if it := self.mili.element(
-            pygame.Rect(0, 0, size, size).move_to(
-                bottomright=(
-                    self.window.size[0] - xoffset,
-                    self.window.size[1]
-                    - self.tbarh
-                    - offset
-                    - self.music_controls.cont_height
-                    - {
-                        "bottom": 0,
-                        "top": size + self.mult(5),
-                        "supertop": size * 2 + offset,
-                        "megatop": size * 3 + offset * 1.5,
-                    }[side],
-                )
-            ),
-            {"ignore_grid": True, "clip_draw": False},
-        ):
-            self.mili.circle(
-                {"color": (cond(self, it, *OVERLAY_CV),) * 3, "border_radius": "50"}
-                | mili.style.same(int(anim.value / 1.8), "padx", "pady")
-            )
-            self.mili.image(
-                line_points_or_image,
-                {"cache": mili.ImageCache.get_next_cache()}
-                | mili.style.same(self.mult(8 + anim.value / 1.8), "padx", "pady"),
-            )
-            if (it.hovered or it.unhover_pressed) and self.can_interact():
-                self.cursor_hover = True
-            if it.just_hovered and self.can_interact():
-                anim.goto_b()
-            elif it.just_unhovered:
-                anim.goto_a()
-            if it.left_just_released and self.can_interact():
-                on_action()
-                anim.goto_a()
-
-    def ui_overlay_top_btn(
-        self, anim, on_action, line_points_or_image, side, sidei=0, red=False
-    ):
-        if self.custom_title:
-            size = self.tbarh
-        else:
-            y = self.mili.text_size("Music Player", {"size": self.mult(35)}).y
-            size = self.mult(36)
-            offset = self.mult(10)
-        if it := self.mili.element(
-            pygame.Rect(0, 0, size, size).move_to(
-                topleft=(
-                    0,
-                    0,
-                )
-                if self.custom_title
-                else (offset, y / 2 - size / 2 + 5)
-            )
-            if side == "left"
-            else pygame.Rect(0, 0, size, size).move_to(
-                topright=(self.window.size[0] - (size * sidei), 0)
-                if self.custom_title
-                else (
-                    self.window.size[0]
-                    - (offset if side == "right" else offset * 2 + size),
-                    y / 2 - size / 2 + 5,
-                )
-            ),
-            {
-                "ignore_grid": True,
-                "clip_draw": False,
-                "z": 9999,
-            },
-        ):
-            if red:
-                color = (TOPB_CV[0],) * 3
-                if self.can_abs_interact():
-                    if it.hovered:
-                        color = (200, 0, 0)
-                    if it.left_pressed:
-                        color = (80, 0, 0)
-            else:
-                color = (cond(self, it, *TOPB_CV),) * 3
-            self.mili.rect(
-                {"color": color, "border_radius": 0}
-                | mili.style.same(int(anim.value), "padx", "pady")
-            )
-            self.mili.image(
-                line_points_or_image,
-                {"cache": mili.ImageCache.get_next_cache(), "smoothscale": True}
-                | mili.style.same(self.mult(3 + anim.value), "padx", "pady"),
-            )
-            if (it.hovered or it.unhover_pressed) and self.can_interact():
-                self.cursor_hover = True
-            if it.just_hovered and self.can_interact():
-                anim.goto_b()
-            elif it.just_unhovered:
-                anim.goto_a()
-            if it.left_just_released and self.can_interact():
-                on_action()
-                anim.goto_a()
-
-    def ui_image_btn(self, image, action, anim, size=62, br="50"):
-        if it := self.mili.element(
-            (0, 0, self.mult(size), self.mult(size)),
-            {"align": "center", "clip_draw": False},
-        ):
-            (self.mili.rect if br != "50" else self.mili.circle)(
-                {
-                    "color": (cond(self, it, MODAL_CV, MODALB_CV[1], MODALB_CV[2]),)
-                    * 3,
-                    "border_radius": br,
-                }
-                | mili.style.same(
-                    (anim.value if br != "50" else anim.value / 1.8), "padx", "pady"
-                )
-            )
-            self.mili.image(
-                image,
-                mili.style.same(self.mult(3) + anim.value, "padx", "pady")
-                | {"smoothscale": True},
-            )
-            if (it.hovered or it.unhover_pressed) and self.can_interact():
-                self.cursor_hover = True
-            if it.left_just_released and self.can_interact():
-                action()
-            if it.just_hovered and self.can_interact():
-                anim.goto_b()
-            if it.just_unhovered:
-                anim.goto_a()
 
     def open_settings(self):
         self.modal_state = "settings"

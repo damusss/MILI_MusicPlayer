@@ -42,7 +42,7 @@ class NewPlaylistUI(UIComponent):
 
                 self.ui_modal_content()
 
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_close,
                 self.close,
                 self.app.close_image,
@@ -108,7 +108,7 @@ class NewPlaylistUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.app.ui_image_btn(
+        self.ui_image_btn(
             self.app.confirm_image, self.action_create_empty, self.anim_create
         )
 
@@ -136,13 +136,13 @@ class NewPlaylistUI(UIComponent):
             }
             | mili.PADLESS,
         ):
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.upload_image,
                 self.action_folder_from_dialog,
                 self.anim_upload,
                 br="30",
             )
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.app.confirm_image, self.action_create_from_folder, self.anim_create
             )
         self.mili.text_element(

@@ -36,7 +36,7 @@ class RenameMusicUI(UIComponent):
 
                 self.ui_modal_content()
 
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_close,
                 self.close,
                 self.app.close_image,
@@ -58,9 +58,7 @@ class RenameMusicUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.app.ui_image_btn(
-            self.app.confirm_image, self.action_confirm, self.anim_create
-        )
+        self.ui_image_btn(self.app.confirm_image, self.action_confirm, self.anim_create)
         self.mili.text_element(
             "Renaming will modify the file on disk. Do not include the file type.",
             {

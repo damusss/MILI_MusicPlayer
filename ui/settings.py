@@ -47,7 +47,7 @@ class SettingsUI(UIComponent):
 
                 self.ui_modal_content()
 
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_close,
                 self.close,
                 self.app.close_image,
@@ -76,15 +76,15 @@ class SettingsUI(UIComponent):
                 vol_image = self.vol1_image
             elif self.app.volume > 0.05:
                 vol_image = self.vollow_image
-            self.app.ui_image_btn(vol_image, self.action_mute, self.anims[0])
+            self.ui_image_btn(vol_image, self.action_mute, self.anims[0])
 
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.app.loopon_image if self.app.loops else self.app.loopoff_image,
                 self.action_loop,
                 self.anims[1],
                 br="50" if not self.app.loops else "5",
             )
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.shuffleon_image if self.app.shuffle else self.shuffleoff_image,
                 self.action_shuffle,
                 self.anims[2],
@@ -103,19 +103,17 @@ class SettingsUI(UIComponent):
             }
             | mili.PADLESS,
         ):
-            self.app.ui_image_btn(
-                self.history_image, self.action_history, self.anims[3]
-            )
-            self.app.ui_image_btn(
+            self.ui_image_btn(self.history_image, self.action_history, self.anims[3])
+            self.ui_image_btn(
                 self.keybinds_image, self.action_keybinds, self.anims[4], br="5"
             )
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.fps60_image if self.app.user_framerate == 60 else self.fps30_image,
                 self.action_fps,
                 self.anims[5],
                 br="5",
             )
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.discordoff_image
                 if not self.app.discord_presence.active
                 else self.discordon_image,

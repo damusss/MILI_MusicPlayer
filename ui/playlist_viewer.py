@@ -75,9 +75,7 @@ class PlaylistViewerUI(UIComponent):
         self.app.change_state("playlist")
 
     def ui_top_buttons(self):
-        self.app.ui_overlay_top_btn(
-            self.anim_back, self.back, self.app.back_image, "left"
-        )
+        self.ui_overlay_top_btn(self.anim_back, self.back, self.app.back_image, "left")
 
     def ui(self):
         if self.modal_state == "none" and self.app.modal_state == "none":
@@ -98,16 +96,16 @@ class PlaylistViewerUI(UIComponent):
         self.ui_container()
 
         if self.modal_state == "none" and self.app.modal_state == "none":
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_add_music,
                 self.action_add_music,
                 self.app.playlistadd_image,
                 "top",
             )
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_cover, self.action_cover, self.change_cover_image, "supertop"
             )
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_search,
                 self.action_search,
                 self.searchoff_image if self.search_active else self.search_image,

@@ -53,7 +53,7 @@ class MoveMusicUI(UIComponent):
                 self.ui_playlists()
                 self.mili.element((0, 0, 0, self.mult(5)))
 
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_close,
                 self.close,
                 self.app.close_image,

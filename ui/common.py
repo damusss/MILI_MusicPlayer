@@ -124,50 +124,201 @@ class UIComponent:
     def mult(self, size):
         return max(0, int(size * self.app.ui_mult))
 
+    def ui_image_btn(
+        self, image, action, anim: mili.animation.ABAnimation, size=62, br="50"
+    ):
+        if it := self.mili.element(
+            (0, 0, self.mult(size), self.mult(size)),
+            {"align": "center", "clip_draw": False},
+        ):
+            (self.mili.rect if br != "50" else self.mili.circle)(
+                {
+                    "color": (cond(self.app, it, MODAL_CV, MODALB_CV[1], MODALB_CV[2]),)
+                    * 3,
+                    "border_radius": br,
+                }
+                | mili.style.same(
+                    (anim.value if br != "50" else anim.value / 1.8), "padx", "pady"
+                )
+            )
+            self.mili.image(
+                image,
+                mili.style.same(self.mult(3) + anim.value, "padx", "pady")
+                | {"smoothscale": True},
+            )
+            if self.app.can_interact():
+                if it.hovered or it.unhover_pressed:
+                    self.app.cursor_hover = True
+                if it.left_just_released:
+                    action()
+                if it.just_hovered:
+                    anim.goto_b()
+            if it.just_unhovered:
+                anim.goto_a()
 
-class Binding:
-    class Bind:
-        def __init__(self, key, ctrl=False):
-            self.key = key
-            self.ctrl = ctrl
+    def ui_overlay_btn(
+        self, anim: mili.animation.ABAnimation, on_action, image, side="bottom"
+    ):
+        size = self.mult(55)
+        offset = self.mult(8)
+        xoffset = offset * 0.8
+        if (
+            self.app.view_state == "list" and self.app.list_viewer.scrollbar.needed
+        ) or (
+            self.app.view_state == "playlist"
+            and self.app.playlist_viewer.scrollbar.needed
+        ):
+            xoffset = offset * 1.5
+        if it := self.mili.element(
+            pygame.Rect(0, 0, size, size).move_to(
+                bottomright=(
+                    self.app.window.size[0] - xoffset,
+                    self.app.window.size[1]
+                    - self.app.tbarh
+                    - offset
+                    - self.app.music_controls.cont_height
+                    - {
+                        "bottom": 0,
+                        "top": size + self.mult(5),
+                        "supertop": size * 2 + offset,
+                        "megatop": size * 3 + offset * 1.5,
+                    }[side],
+                )
+            ),
+            {"ignore_grid": True, "clip_draw": False},
+        ):
+            self.mili.circle(
+                {"color": (cond(self.app, it, *OVERLAY_CV),) * 3, "border_radius": "50"}
+                | mili.style.same(int(anim.value / 1.8), "padx", "pady")
+            )
+            self.mili.image(
+                image,
+                {"cache": mili.ImageCache.get_next_cache()}
+                | mili.style.same(self.mult(8 + anim.value / 1.8), "padx", "pady"),
+            )
+            if self.app.can_interact():
+                if it.hovered or it.unhover_pressed:
+                    self.app.cursor_hover = True
+                if it.just_hovered:
+                    anim.goto_b()
+                if it.left_just_released:
+                    on_action()
+                    anim.goto_a()
+            if it.just_unhovered:
+                anim.goto_a()
 
-    def get_keycodes(self):
-        return [bind.key for bind in self.binds]
-
-    def __init__(self, *binds, ctrl=False):
-        newbinds = []
-        for bind in binds:
-            if isinstance(bind, int):
-                newbinds.append(Binding.Bind(bind, ctrl))
+    def ui_overlay_top_btn(
+        self,
+        anim: mili.animation.ABAnimation,
+        on_action,
+        image,
+        side,
+        sidei=0,
+        red=False,
+    ):
+        if self.app.custom_title:
+            size = self.app.tbarh
+        else:
+            y = self.mili.text_size("Music Player", {"size": self.mult(35)}).y
+            size = self.mult(36)
+            offset = self.mult(10)
+        if it := self.mili.element(
+            pygame.Rect(0, 0, size, size).move_to(
+                topleft=(
+                    0,
+                    0,
+                )
+                if self.app.custom_title
+                else (offset, y / 2 - size / 2 + 5)
+            )
+            if side == "left"
+            else pygame.Rect(0, 0, size, size).move_to(
+                topright=(self.app.window.size[0] - (size * sidei), 0)
+                if self.app.custom_title
+                else (
+                    self.app.window.size[0]
+                    - (offset if side == "right" else offset * 2 + size),
+                    y / 2 - size / 2 + 5,
+                )
+            ),
+            {
+                "ignore_grid": True,
+                "clip_draw": False,
+                "z": 9999,
+            },
+        ):
+            if red:
+                color = (TOPB_CV[0],) * 3
+                if self.app.can_abs_interact():
+                    if it.hovered:
+                        color = (200, 0, 0)
+                    if it.left_pressed:
+                        color = (80, 0, 0)
             else:
-                newbinds.append(bind)
-        self.binds: list[Binding.Bind] = newbinds
-
-    def check(self, event: pygame.Event, extra_keys, input_stolen):
-        if event.type == pygame.KEYDOWN:
-            for key in extra_keys:
-                if event.key == key and not input_stolen:
-                    return True
-            for bind in self.binds:
-                if bind.ctrl:
-                    if event.key == bind.key and event.mod & pygame.KMOD_CTRL:
-                        return True
-                else:
-                    if (
-                        event.key == bind.key
-                        and not input_stolen
-                        and not event.mod & pygame.KMOD_CTRL
-                    ):
-                        return True
-
-        return False
+                color = (cond(self.app, it, *TOPB_CV),) * 3
+            self.mili.rect(
+                {"color": color, "border_radius": 0}
+                | mili.style.same(int(anim.value), "padx", "pady")
+            )
+            self.mili.image(
+                image,
+                {"cache": mili.ImageCache.get_next_cache(), "smoothscale": True}
+                | mili.style.same(self.mult(3 + anim.value), "padx", "pady"),
+            )
+            if self.app.can_interact():
+                if it.hovered or it.unhover_pressed:
+                    self.app.cursor_hover = True
+                if it.just_hovered:
+                    anim.goto_b()
+                if it.left_just_released:
+                    on_action()
+                    anim.goto_a()
+            if it.just_unhovered:
+                anim.goto_a()
 
 
 class Keybinds:
+    class Binding:
+        class Bind:
+            def __init__(self, key, ctrl=False):
+                self.key = key
+                self.ctrl = ctrl
+
+        def __init__(self, *binds, ctrl=False):
+            newbinds = []
+            for bind in binds:
+                if isinstance(bind, int):
+                    newbinds.append(Keybinds.Binding.Bind(bind, ctrl))
+                else:
+                    newbinds.append(bind)
+            self.binds: list[Keybinds.Binding.Bind] = newbinds
+
+        def get_keycodes(self):
+            return [bind.key for bind in self.binds]
+
+        def check(self, event: pygame.Event, extra_keys, input_stolen):
+            if event.type == pygame.KEYDOWN:
+                for key in extra_keys:
+                    if event.key == key and not input_stolen:
+                        return True
+                for bind in self.binds:
+                    if bind.ctrl:
+                        if event.key == bind.key and event.mod & pygame.KMOD_CTRL:
+                            return True
+                    else:
+                        if (
+                            event.key == bind.key
+                            and not input_stolen
+                            and not event.mod & pygame.KMOD_CTRL
+                        ):
+                            return True
+
+            return False
+
     instance: "Keybinds" = None
 
     def __init__(self, app):
-        self.app = app
+        self.app: "MusicPlayerApp" = app
         self.reset()
         Keybinds.instance = self
 
@@ -178,6 +329,7 @@ class Keybinds:
         )
 
     def reset(self):
+        Binding = Keybinds.Binding
         self.keybinds = {
             "confirm": Binding(pygame.K_RETURN),
             "toggle_settings": Binding(pygame.K_s),
@@ -201,12 +353,12 @@ class Keybinds:
         }
         self.default_keybinds = self.keybinds.copy()
 
-    def load_from_data(self, data):
+    def load_from_data(self, data: dict):
         for name, bdata in data.items():
             if name not in self.keybinds:
                 continue
             binding = self.keybinds[name]
-            binding.binds = [Binding.Bind(d["key"], d["ctrl"]) for d in bdata]
+            binding.binds = [Keybinds.Binding.Bind(d["key"], d["ctrl"]) for d in bdata]
 
     def get_save_data(self):
         return {

@@ -40,7 +40,7 @@ class HistoryUI(UIComponent):
 
                 self.ui_modal_content()
 
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_back,
                 self.back,
                 self.app.back_image,
@@ -54,7 +54,7 @@ class HistoryUI(UIComponent):
             self.mili.text_element(
                 "History", {"size": self.mult(26)}, None, mili.CENTER
             )
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.app.delete_image, self.action_clear, self.anim_clear, 30
             )
         with self.mili.begin(

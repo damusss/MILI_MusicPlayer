@@ -11,7 +11,7 @@ class EditKeybindsUI(UIComponent):
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 7, 4, 0, 0, "y")
-        self.listening_bind: Binding = None
+        self.listening_bind: Keybinds.Binding = None
         self.listening_idx = 0
         self.listening_key = None
         self.listening_ctrl = False
@@ -45,7 +45,7 @@ class EditKeybindsUI(UIComponent):
 
                 self.ui_modal_content()
 
-            self.app.ui_overlay_btn(
+            self.ui_overlay_btn(
                 self.anim_back,
                 self.back,
                 self.app.back_image,
@@ -61,7 +61,7 @@ class EditKeybindsUI(UIComponent):
             self.mili.text_element(
                 "Keybindings", {"size": self.mult(26)}, None, mili.CENTER
             )
-            self.app.ui_image_btn(
+            self.ui_image_btn(
                 self.app.reset_image, self.action_reset, self.anim_reset, 30
             )
         with self.mili.begin(
@@ -90,7 +90,7 @@ class EditKeybindsUI(UIComponent):
                     ) and self.app.can_interact():
                         self.app.cursor_hover = True
 
-    def ui_keybind(self, name, bind: Binding):
+    def ui_keybind(self, name, bind: Keybinds.Binding):
         height = self.mult(30)
         with self.mili.begin(
             (0, 0, 0, height),
@@ -189,7 +189,7 @@ class EditKeybindsUI(UIComponent):
                         "Listening Key", {"size": self.mult(26)}, None, mili.CENTER
                     )
                     if self.listening_idx == 1:
-                        self.app.ui_image_btn(
+                        self.ui_image_btn(
                             self.app.delete_image,
                             self.action_remove_keybind,
                             self.anim_remove,
@@ -284,7 +284,7 @@ class EditKeybindsUI(UIComponent):
             self.app.listening_key = False
             if len(self.listening_bind.binds) <= self.listening_idx:
                 self.listening_bind.binds.append(
-                    Binding.Bind(self.listening_key, self.listening_ctrl)
+                    Keybinds.Binding.Bind(self.listening_key, self.listening_ctrl)
                 )
             else:
                 bind = self.listening_bind.binds[self.listening_idx]
