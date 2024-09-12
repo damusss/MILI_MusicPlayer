@@ -89,7 +89,7 @@ There are 2 settings that can only be accessed in the `data/settings.json` file.
 # Dependencies
 
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)
-- `mili-ui` >= 0.9.5 (UI backend)
+- `mili-ui` >= 0.9.6 (UI backend)
 - `moviepy` >= 1.0.3 (MP4 converter, audio reader)
 - **[optional]** `pypresence` >= 4.3.0 (Discord presence)
 - **[optional]** `PySDL2` >= 0.9.16 (global mouse state backend)

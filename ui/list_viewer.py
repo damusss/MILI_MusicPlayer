@@ -22,7 +22,7 @@ class ListViewerUI(UIComponent):
         self.sbar_size = self.scrollbar.short_size
 
     def ui_top_buttons(self):
-        if self.app.custom_title:
+        if self.app.custom_title or self.app.modal_state == "fullscreen":
             return
         self.ui_overlay_top_btn(
             self.anim_toggle,
@@ -33,7 +33,7 @@ class ListViewerUI(UIComponent):
 
     def ui(self):
         if self.modal_state == "none" and self.app.modal_state == "none":
-            handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
+            handle_arrow_scroll(self.app, self.scroll, self.scrollbar)
 
         self.scrollbar.short_size = self.mult(8)
         self.mili.text_element(

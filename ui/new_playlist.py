@@ -238,7 +238,7 @@ class NewPlaylistUI(UIComponent):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
             return
-        if Keybinds.check("confirm", event):
+        if Keybinds.check("confirm", event, ignore_input=True):
             if self.create_type == "empty":
                 self.action_create_empty()
             else:

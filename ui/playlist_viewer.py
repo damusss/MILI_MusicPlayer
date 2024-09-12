@@ -1,5 +1,7 @@
 import mili
 import pygame
+import platform
+import subprocess
 from ui.common import *
 from ui.data import Playlist, MusicData
 from ui.add_music import AddMusicUI
@@ -16,7 +18,7 @@ class PlaylistViewerUI(UIComponent):
         self.anim_cover = animation(-5)
         self.anim_back = animation(-3)
         self.anim_search = animation(-5)
-        self.menu_anims = [animation(-4) for i in range(3)]
+        self.menu_anims = [animation(-4) for i in range(4)]
         self.modal_state = "none"
         self.middle_selected = None
         self.search_active = False
@@ -76,11 +78,13 @@ class PlaylistViewerUI(UIComponent):
         self.app.change_state("playlist")
 
     def ui_top_buttons(self):
+        if self.app.modal_state != "none" or self.modal_state != "none":
+            return
         self.ui_overlay_top_btn(self.anim_back, self.back, self.app.back_image, "left")
 
     def ui(self):
         if self.modal_state == "none" and self.app.modal_state == "none":
-            handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
+            handle_arrow_scroll(self.app, self.scroll, self.scrollbar)
 
         if self.search_active:
             self.search_entryline.update(self.app)
@@ -359,6 +363,12 @@ class PlaylistViewerUI(UIComponent):
                         music,
                         (self.app.rename_image, self.action_rename, self.menu_anims[0]),
                         (self.forward_image, self.action_forward, self.menu_anims[1]),
+                        (
+                            self.app.music_controls.minip_image,
+                            self.action_show_in_explorer,
+                            self.menu_anims[3],
+                            "30",
+                        ),
                         (self.app.delete_image, self.action_delete, self.menu_anims[2]),
                     )
                 elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
@@ -433,6 +443,30 @@ class PlaylistViewerUI(UIComponent):
         self.modal_state = "move"
         self.move_music.music = self.app.menu_data
         self.app.close_menu()
+
+    def action_show_in_explorer(self):
+        system = platform.system()
+        path = self.app.menu_data.realpath.parent
+        self.app.close_menu()
+
+        if system == "Windows":
+            subprocess.Popen(
+                ["explorer", path],
+                creationflags=subprocess.CREATE_NO_WINDOW
+                | subprocess.CREATE_NEW_CONSOLE,
+            )
+        elif system == "Darwin":
+            subprocess.Popen(["open", path])
+        elif system == "Linux":
+            subprocess.Popen(["xdg-open", path])
+        else:
+            pygame.display.message_box(
+                "Operation failed",
+                "Could not show file in explorer due to unsupported OS.",
+                "error",
+                None,
+                ("Understood"),
+            )
 
     def action_delete(self):
         btn = pygame.display.message_box(

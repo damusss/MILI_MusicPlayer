@@ -121,21 +121,6 @@ class SettingsUI(UIComponent):
                 self.anims[6],
             )
 
-    def action_discord(self):
-        self.app.discord_presence.toggle()
-
-    def action_history(self):
-        self.app.modal_state = "history"
-
-    def action_fps(self):
-        if self.app.user_framerate == 60:
-            self.app.user_framerate = 30
-        else:
-            self.app.user_framerate = 60
-
-    def action_shuffle(self):
-        self.app.shuffle = not self.app.shuffle
-
     def ui_slider(self):
         self.slider.handle_size = self.mult(40), self.mult(40)
 
@@ -208,6 +193,21 @@ class SettingsUI(UIComponent):
                 if handle.hovered or handle.unhover_pressed:
                     self.app.cursor_hover = True
         return handle
+
+    def action_discord(self):
+        self.app.discord_presence.toggle()
+
+    def action_history(self):
+        self.app.modal_state = "history"
+
+    def action_fps(self):
+        if self.app.user_framerate == 60:
+            self.app.user_framerate = 30
+        else:
+            self.app.user_framerate = 60
+
+    def action_shuffle(self):
+        self.app.shuffle = not self.app.shuffle
 
     def change_volume(self, value=None):
         if value is None:

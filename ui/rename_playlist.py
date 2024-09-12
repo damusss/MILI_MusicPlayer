@@ -137,6 +137,6 @@ class RenamePlaylistUI(UIComponent):
             return
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
-        if Keybinds.check("confirm", event):
+        if Keybinds.check("confirm", event, ignore_input=True):
             self.action_confirm()
         self.entryline.event(event)

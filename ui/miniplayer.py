@@ -120,15 +120,6 @@ class MiniplayerUI:
     def can_focus_click(self):
         return self.app.sdl2 is None and self.focused
 
-    def action_play(self):
-        self.app.music_controls.action_play()
-
-    def action_next(self):
-        self.app.music_controls.action_skip_next()
-
-    def action_previous(self):
-        self.app.music_controls.action_skip_previous()
-
     def get_hovered(self):
         if self.app.sdl2 is None:
             self.hovered = False
@@ -185,7 +176,7 @@ class MiniplayerUI:
 
         wm = self.window.size[0] / MINIP_PREFERRED_SIZES[0]
         hm = self.window.size[1] / MINIP_PREFERRED_SIZES[1]
-        self.ui_mult = min(2, max(0.8, (wm * 0.1 + hm * 1) / 1.1))
+        self.ui_mult = min(1.4, max(0.69, (wm * 0.1 + hm * 1) / 1.1))
 
         self.mili.rect({"color": (3,) * 3})
         self.mili.rect(
@@ -258,6 +249,7 @@ class MiniplayerUI:
             },
             get_data=True,
         ) as data:
+            shift = pygame.key.get_mods() & pygame.KMOD_SHIFT
             self.controls_rect = data.rect
             self.mili.image(
                 self.bg_surf,
@@ -268,11 +260,15 @@ class MiniplayerUI:
                     "fill_color": MP_BG_FILL,
                 },
             )
-            if self.app.music_index > 0:
+            if self.app.music_index > 0 or shift:
                 self.ui_control_btn(
-                    self.app.music_controls.skip_previous_image,
+                    self.app.music_controls.back5_image
+                    if shift
+                    else self.app.music_controls.skip_previous_image,
                     50,
-                    self.action_previous,
+                    self.app.music_controls.action_backwards_5
+                    if shift
+                    else self.app.music_controls.action_skip_previous,
                     0,
                 )
             self.ui_control_btn(
@@ -280,12 +276,22 @@ class MiniplayerUI:
                 if self.app.music_paused
                 else self.app.music_controls.pause_image,
                 60,
-                self.action_play,
+                self.app.music_controls.action_play,
                 1,
             )
-            if self.app.music_index < len(self.app.music.playlist.musiclist) - 1:
+            if (
+                self.app.music_index < len(self.app.music.playlist.musiclist) - 1
+                or shift
+            ):
                 self.ui_control_btn(
-                    self.app.music_controls.skip_next_image, 50, self.action_next, 2
+                    self.app.music_controls.skip5_image
+                    if shift
+                    else self.app.music_controls.skip_next_image,
+                    50,
+                    self.app.music_controls.action_forward_5
+                    if shift
+                    else self.app.music_controls.action_skip_next,
+                    2,
                 )
 
     def ui_control_btn(self, image, size, action, animi):

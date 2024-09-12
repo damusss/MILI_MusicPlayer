@@ -17,6 +17,7 @@ from health_check import main as health_check
 from ui.music_controls import MusicControlsUI
 from ui.playlist_viewer import PlaylistViewerUI
 from ui.discord_presence import DiscordPresence
+from ui.music_fullscreen import MusicFullscreenUI
 from ui.data import (
     HistoryData,
     MusicData,
@@ -77,6 +78,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.discord_presence = DiscordPresence(self)
         self.keybinds = Keybinds(self)
         self.edit_keybinds = EditKeybindsUI(self)
+        self.music_fullscreen = MusicFullscreenUI(self)
         self.prefabs = UIComponent(self)
         # settings
         self.user_framerate = 60
@@ -112,7 +114,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.anim_settings = animation(-5)
         # menu
         self.menu_open = False
-        self.menu_data: Playlist | pathlib.Path = None
+        self.menu_data: Playlist | MusicData = None
         self.menu_buttons = None
         self.menu_pos = None
         # music
@@ -387,6 +389,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.discord_presence.update()
 
     def end_music(self):
+        self.close_menu()
+        if self.modal_state == "fullscreen":
+            self.modal_state = "none"
         if self.music is not None:
             self.add_to_history()
         self.music = None
@@ -475,7 +480,7 @@ class MusicPlayerApp(mili.GenericApp):
         multy = self.window.size[1] / UI_SIZES[1]
         self.ui_mult = min(1.2, max(0.4, (multx * 0.1 + multy * 1) / 1.1))
 
-        if self.custom_title:
+        if self.custom_title and not self.music_controls.super_fullscreen:
             self.tbarh = 30
         else:
             self.tbarh = 0
@@ -519,15 +524,14 @@ class MusicPlayerApp(mili.GenericApp):
 
             if self.modal_state == "settings":
                 self.settings.ui()
+            elif self.modal_state == "fullscreen":
+                self.music_fullscreen.ui()
             elif self.modal_state == "history":
                 self.history.ui()
             elif self.modal_state == "keybinds":
                 self.edit_keybinds.ui()
 
             self.music_controls.ui()
-
-            if self.menu_open:
-                self.ui_menu()
 
             if (
                 self.playlist_viewer.modal_state == "none"
@@ -544,14 +548,24 @@ class MusicPlayerApp(mili.GenericApp):
         if (
             self.view_state == "list"
             and self.custom_title
-            and pygame.key.get_pressed()[pygame.K_TAB]
+            and pygame.key.get_pressed()[pygame.K_BACKSLASH]
         ):
             self.mili.text_element(
-                "developer version 30",
+                f"developer version {DEV_VERSION}",
                 {"size": self.mult(13), "color": (100,) * 3},
                 None,
                 mili.FLOATING,
             )
+
+        if self.modal_state not in ["fullscreen", "none"]:
+            self.close_menu()
+        if self.menu_open:
+            self.ui_menu()
+
+        if self.view_state == "playlist":
+            self.playlist_viewer.ui_top_buttons()
+        elif self.view_state == "list":
+            self.list_viewer.ui_top_buttons()
 
         if not self.stolen_cursor and self.cursor_hover and self.focused:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
@@ -589,10 +603,6 @@ class MusicPlayerApp(mili.GenericApp):
                     "right",
                     3,
                 )
-                if self.view_state == "playlist":
-                    self.playlist_viewer.ui_top_buttons()
-                elif self.view_state == "list":
-                    self.list_viewer.ui_top_buttons()
         else:
             self.prefabs.ui_overlay_top_btn(
                 self.anims[0],
@@ -600,10 +610,6 @@ class MusicPlayerApp(mili.GenericApp):
                 self.close_image,
                 "right",
             )
-            if self.view_state == "playlist":
-                self.playlist_viewer.ui_top_buttons()
-            elif self.view_state == "list":
-                self.list_viewer.ui_top_buttons()
 
     def ui_bg_effect(self):
         if not self.bg_effect:
@@ -621,18 +627,30 @@ class MusicPlayerApp(mili.GenericApp):
                 "parent_id": 0,
                 "axis": "x",
                 "z": 9999,
-                "padx": 7,
-                "pady": 7,
+                "padx": self.mult(7),
+                "pady": self.mult(7),
             },
         ) as menu:
             self.mili.rect({"color": (MENU_CV[0],) * 3, "border_radius": "50"})
             self.mili.rect(
                 {"color": (MENU_CV[1],) * 3, "border_radius": "50", "outline": 1}
             )
-            for bimage, baction, banim in self.menu_buttons:
-                self.prefabs.ui_image_btn(bimage, baction, banim, 50)
-            if not menu.absolute_hover and any(
-                [btn is True for btn in pygame.mouse.get_pressed()]
+            for bdata in self.menu_buttons:
+                br = "50"
+                if len(bdata) == 3:
+                    bimage, baction, banim = bdata
+                else:
+                    bimage, baction, banim, br = bdata
+                self.prefabs.ui_image_btn(bimage, baction, banim, 45, br)
+            if (
+                not menu.absolute_hover
+                and any([btn is True for btn in pygame.mouse.get_pressed()])
+                and (
+                    self.music_controls.dots_rect is None
+                    or not self.music_controls.dots_rect.collidepoint(
+                        pygame.mouse.get_pos()
+                    )
+                )
             ):
                 self.close_menu()
 
@@ -650,11 +668,14 @@ class MusicPlayerApp(mili.GenericApp):
         self.menu_buttons = None
         self.menu_pos = None
 
-    def open_menu(self, data, *buttons):
+    def open_menu(self, data, *buttons, pos=None):
         self.menu_open = True
         self.menu_data = data
         self.menu_buttons = buttons
-        self.menu_pos = pygame.mouse.get_pos()
+        if pos is None:
+            self.menu_pos = pygame.mouse.get_pos()
+        else:
+            self.menu_pos = pos
 
     def mult(self, size):
         return max(1, int(size * self.ui_mult))
@@ -727,6 +748,9 @@ class MusicPlayerApp(mili.GenericApp):
         elif self.modal_state == "keybinds":
             if self.edit_keybinds.event(event):
                 return
+        elif self.modal_state == "fullscreen":
+            if self.music_fullscreen.event(event):
+                return
         if self.view_state == "list":
             self.list_viewer.event(event)
         elif self.view_state == "playlist":
@@ -761,15 +785,16 @@ class MusicPlayerApp(mili.GenericApp):
         for playlist in self.playlists:
             for music in playlist.musiclist:
                 if music.pending:
-                    pygame.display.message_box(
+                    btn = pygame.display.message_box(
                         "Wait before closing",
                         "Some tracks are still being converted. Please wait until they are converted "
                         "before closing the application, otherwise the files will be corrupted.",
                         "warn",
                         None,
-                        ("Understood",),
+                        ("Understood", "Close Anyways"),
                     )
-                    return
+                    if btn == 0:
+                        return
         self.save()
         pygame.quit()
         raise SystemExit

@@ -14,7 +14,7 @@ class HistoryUI(UIComponent):
         self.sbar_size = self.scrollbar.short_size
 
     def ui(self):
-        handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
+        handle_arrow_scroll(self.app, self.scroll, self.scrollbar)
 
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER

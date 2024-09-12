@@ -7,6 +7,7 @@ import typing
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
+DEV_VERSION = 31
 PREFERRED_SIZES = (415, 700)
 MINIP_PREFERRED_SIZES = 200, 200
 UI_SIZES = (480, 720)
@@ -75,7 +76,11 @@ def animation(value):
     )
 
 
-def handle_arrow_scroll(dt, scroll: mili.Scroll, scrollbar: mili.Scrollbar = None):
+def handle_arrow_scroll(
+    app: "MusicPlayerApp", scroll: mili.Scroll, scrollbar: mili.Scrollbar = None
+):
+    if not app.focused:
+        return
     keys = pygame.key.get_pressed()
     amount = 0
     upbind = Keybinds.instance.keybinds["scroll_up"]
@@ -84,7 +89,7 @@ def handle_arrow_scroll(dt, scroll: mili.Scroll, scrollbar: mili.Scrollbar = Non
         amount -= 1
     if any([keys[key] for key in downbind.get_keycodes()]):
         amount += 1
-    scroll.scroll(0, amount * 600 * dt)
+    scroll.scroll(0, amount * 600 * app.delta_time)
     if scrollbar is not None:
         scrollbar.scroll_moved()
 
@@ -294,10 +299,10 @@ class Keybinds:
         def get_keycodes(self):
             return [bind.key for bind in self.binds]
 
-        def check(self, event: pygame.Event, extra_keys, input_stolen):
+        def check(self, event: pygame.Event, extra_keys, input_stolen, ignore_input):
             if event.type == pygame.KEYDOWN:
                 for key in extra_keys:
-                    if event.key == key and not input_stolen:
+                    if event.key == key and (not input_stolen or ignore_input):
                         return True
                 for bind in self.binds:
                     if bind.ctrl:
@@ -306,7 +311,7 @@ class Keybinds:
                     else:
                         if (
                             event.key == bind.key
-                            and not input_stolen
+                            and (not input_stolen or ignore_input)
                             and not event.mod & pygame.KMOD_CTRL
                         ):
                             return True
@@ -321,9 +326,9 @@ class Keybinds:
         Keybinds.instance = self
 
     @classmethod
-    def check(cls, name, event, *extra_keys):
+    def check(cls, name, event, *extra_keys, ignore_input=False):
         return not cls.instance.app.listening_key and cls.instance.keybinds[name].check(
-            event, extra_keys, cls.instance.app.input_stolen
+            event, extra_keys, cls.instance.app.input_stolen, ignore_input
         )
 
     def reset(self):
@@ -331,13 +336,15 @@ class Keybinds:
         self.keybinds = {
             "confirm": Binding(pygame.K_RETURN),
             "toggle_settings": Binding(pygame.K_s),
+            "music_maximize": Binding(pygame.K_F11),
+            "extra_controls": Binding(pygame.K_TAB),
             "volume_up": Binding(pygame.K_UP, pygame.K_KP8),
             "volume_down": Binding(pygame.K_DOWN, pygame.K_KP2),
+            "pause_music": Binding(pygame.K_SPACE, pygame.K_KP_ENTER),
             "previous_track": Binding(pygame.K_LEFT, pygame.K_KP4),
             "next_track": Binding(pygame.K_RIGHT, pygame.K_KP6),
             "back_5_s": Binding(pygame.K_LEFT, pygame.K_KP4, ctrl=True),
             "skip_5_s": Binding(pygame.K_RIGHT, pygame.K_KP6, ctrl=True),
-            "pause_music": Binding(pygame.K_SPACE, pygame.K_KP_ENTER),
             "quit": Binding(pygame.K_q, ctrl=True),
             "new/add": Binding(pygame.K_a, ctrl=True),
             "save": Binding(pygame.K_s, ctrl=True),
@@ -348,6 +355,7 @@ class Keybinds:
             "end_music": Binding(pygame.K_e, ctrl=True),
             "rewind_music": Binding(pygame.K_r, ctrl=True),
             "toggle_miniplayer": Binding(pygame.K_d, ctrl=True),
+            "music_fullscreen": Binding(pygame.K_F11, ctrl=True),
             "scroll_up": Binding(pygame.K_PAGEUP, pygame.K_KP9),
             "scroll_down": Binding(pygame.K_PAGEDOWN, pygame.K_KP3),
         }
