@@ -11,6 +11,7 @@ class HistoryUI(UIComponent):
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 7, 0, 0, 0, "y")
+        self.sbar_size = self.scrollbar.short_size
 
     def ui(self):
         handle_arrow_scroll(self.app.delta_time, self.scroll, self.scrollbar)
@@ -61,6 +62,7 @@ class HistoryUI(UIComponent):
             None, {"fillx": True, "filly": True} | mili.PADLESS, get_data=True
         ) as cont:
             self.scroll.update(cont)
+            self.scrollbar.short_size = self.mult(self.sbar_size)
             self.scrollbar.update(cont)
             for history in reversed(self.app.history_data):
                 self.ui_history(history)
@@ -100,16 +102,17 @@ class HistoryUI(UIComponent):
                 "fillx": "97" if self.scrollbar.needed else "99",
                 "resizey": True,
                 "anchor": "first",
-                "offset": self.scroll.get_offset(),
+                "offset": (
+                    self.scrollbar.needed * -self.mult(self.sbar_size / 2),
+                    self.scroll.get_offset()[1],
+                ),
                 "pady": 2,
                 "spacing": 0,
-                "align": "first"
-                if (self.scrollbar.needed or self.app.ui_mult < 1.12)
-                else "center",
+                "align": "center",
             },
             get_data=True,
         ) as it:
-            self.mili.rect({"color": (cond(self.app, it, *LISTM_CV),) * 3})
+            self.mili.rect({"color": (cond(self.app, it, *MENUB_CV),) * 3})
             self.ui_history_title(history)
             self.ui_history_time(history, it.rect)
 
@@ -119,7 +122,7 @@ class HistoryUI(UIComponent):
                 if it.hovered or it.unhover_pressed:
                     self.app.cursor_hover = True
 
-    def ui_history_time(self, history, cont_rect):
+    def ui_history_time(self, history: HistoryData, cont_rect):
         if history.music.pos_supported:
             data = self.mili.line_element(
                 [("-49.5", 0), ("49.5", 0)],
@@ -184,8 +187,7 @@ class HistoryUI(UIComponent):
         self.app.play_music(
             history.music, history.music.playlist.musiclist.index(history.music)
         )
-        self.app.music_play_offset = history.position
-        pygame.mixer.music.set_pos(history.position)
+        self.app.set_music_pos(history.position)
         self.app.playlist_viewer.scroll.set_scroll(
             0, self.app.music_index * (self.app.mult(80) + 3)
         )

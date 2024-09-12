@@ -31,6 +31,7 @@ A MILI UI demo featuring a rich music player.<br>
 - Hold the mouse wheel button and scroll to reorder playlists and musics
 - Click on the currently playing track's cover/video to jump to the track in the playlist
 - Hover a playlist's cover or the currently playing track's cover/video for a fraction of a second to view it full screen
+- Holding shift while pressing the skip/previous buttons will respectively skip or go back 5 seconds instead of the whole track
 
 # Keyboard Shortcuts
 
@@ -47,6 +48,8 @@ Note that the volume buttons do not change the app's volume. It is advised to le
 - **SPACE**/**ENTER**/**KP ENTER**/**AUDIO PLAY**: Play/pause music
 - **LEFT**/**KP 4**/**AUDIO PREVIOUS**: Previous song
 - **RIGHT**/**KP 6**/**AUDIO NEXT**: Next song
+- **CTRL** + **LEFT**/**CTRL** + **KP 4**: Back 5 seconds
+- **CTRL** + **RIGHT**/**CTRL** + **KP 6**: Skip 5 seconds
 - **CTRL** + **Q**: Quit
 - **CTRL** + **A**: New playlist/Add music
 - **CTRL** + **S**: Save
@@ -86,7 +89,7 @@ There are 2 settings that can only be accessed in the `data/settings.json` file.
 # Dependencies
 
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)
-- `mili-ui` >= 0.9.4 (UI backend)
+- `mili-ui` >= 0.9.5 (UI backend)
 - `moviepy` >= 1.0.3 (MP4 converter, audio reader)
 - **[optional]** `pypresence` >= 4.3.0 (Discord presence)
 - **[optional]** `PySDL2` >= 0.9.16 (global mouse state backend)

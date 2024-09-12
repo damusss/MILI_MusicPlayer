@@ -81,7 +81,7 @@ def main():
                 anyf3 = True
 
     if not anyf1 and not anyf2 and not anyf3:
-        print("Health Check: 100%")
+        print("No unused files found")
     else:
         if not anyf1:
             print("No unused playlist covers found")

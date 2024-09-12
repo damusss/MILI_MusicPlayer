@@ -4,7 +4,6 @@ import json
 import pygame
 import typing
 
-
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
@@ -21,7 +20,7 @@ WIN_MIN_SIZE = (200, 300)
 DISCORD_COOLDOWN = 20000
 BIG_COVER_COOLDOWN = 300
 SAVE_COOLDOWN = 60000 * 2
-
+RATIO_MIN = 0.5
 BG_CV = 3
 MUSIC_CV = 3, 10, 5
 LIST_CV = MUSIC_CV
@@ -33,8 +32,7 @@ MODALB_CV = 25, 45, 20
 MUSICC_CV = 10
 CONTROLS_CV = 10, 30, 18
 MENU_CV = 6, 20
-LISTM_CV = 20, 25, 18
-KEYB_CV = 20, 32, 18
+MENUB_CV = 20, 30, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
 ALPHA = 170
@@ -42,7 +40,7 @@ BORDER_CV = 100
 TOPB_CV = 15, 25, 8
 
 
-def cond(app, it, normal, hover, press):
+def cond(app: "MusicPlayerApp", it: mili.Interaction, normal, hover, press):
     if not app.can_interact():
         return normal
     if it.left_pressed:
@@ -337,6 +335,8 @@ class Keybinds:
             "volume_down": Binding(pygame.K_DOWN, pygame.K_KP2),
             "previous_track": Binding(pygame.K_LEFT, pygame.K_KP4),
             "next_track": Binding(pygame.K_RIGHT, pygame.K_KP6),
+            "back_5_s": Binding(pygame.K_LEFT, pygame.K_KP4, ctrl=True),
+            "skip_5_s": Binding(pygame.K_RIGHT, pygame.K_KP6, ctrl=True),
             "pause_music": Binding(pygame.K_SPACE, pygame.K_KP_ENTER),
             "quit": Binding(pygame.K_q, ctrl=True),
             "new/add": Binding(pygame.K_a, ctrl=True),

@@ -11,6 +11,7 @@ class EditKeybindsUI(UIComponent):
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 7, 4, 0, 0, "y")
+        self.sbar_size = self.scrollbar.short_size
         self.listening_bind: Keybinds.Binding = None
         self.listening_idx = 0
         self.listening_key = None
@@ -68,6 +69,7 @@ class EditKeybindsUI(UIComponent):
             None, {"fillx": True, "filly": True} | mili.PADLESS, get_data=True
         ) as cont:
             self.scroll.update(cont)
+            self.scrollbar.short_size = self.mult(self.sbar_size)
             self.scrollbar.update(cont)
             for name, bind in Keybinds.instance.keybinds.items():
                 self.ui_keybind(name, bind)
@@ -132,13 +134,13 @@ class EditKeybindsUI(UIComponent):
                         {
                             "color": (
                                 (
-                                    KEYB_CV[1]
+                                    MENUB_CV[1]
                                     if (
                                         binding is self.listening_bind
                                         and i == self.listening_idx
                                         and self.app.listening_key
                                     )
-                                    else cond(self.app, it, *KEYB_CV)
+                                    else cond(self.app, it, *MENUB_CV)
                                 ),
                             )
                             * 3,

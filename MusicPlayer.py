@@ -17,7 +17,12 @@ from health_check import main as health_check
 from ui.music_controls import MusicControlsUI
 from ui.playlist_viewer import PlaylistViewerUI
 from ui.discord_presence import DiscordPresence
-from ui.data import HistoryData, MusicData, Playlist, ResizeHandle, NotCached
+from ui.data import (
+    HistoryData,
+    MusicData,
+    Playlist,
+    NotCached,
+)
 
 try:
     faulthandler.enable()
@@ -37,9 +42,9 @@ class MusicPlayerApp(mili.GenericApp):
         self.init_pygame()
         self.init_attributes()
         self.init_data_folder_check()
-        self.init_load_icons()
         self.init_load_settings()
         self.init_loading_screen()
+        self.init_load_icons()
         self.init_load_data()
         self.init_mili_settings()
         self.init_sld2()
@@ -60,6 +65,7 @@ class MusicPlayerApp(mili.GenericApp):
         )
         self.window.minimum_size = WIN_MIN_SIZE
         pygame.key.set_repeat(500, 30)
+        print(f"MILI {mili.VERSION_STR}")
 
     def init_attributes(self):
         # components
@@ -120,35 +126,19 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_start_time = None
         # custom title
         self.tbarh = 0
-        self.tbar_rect = pygame.Rect()
-        self.drag_rel_pos = pygame.Vector2()
-        self.drag_press_pos = pygame.Vector2()
-        self.window_drag = False
-        self.window_resize = False
         self.window_stop_special = False
-        self.window_drag_effective = False
-        self.resize_gmpos = None
-        self.resize_winsize = None
-        self.resize_winpos = None
-        self.resize_handle = None
-        self.resize_handles = [
-            ResizeHandle(
-                self, "topleft", True, None, "xy", pygame.SYSTEM_CURSOR_SIZENWSE
-            ),
-            ResizeHandle(
-                self, "topright", True, None, "y", pygame.SYSTEM_CURSOR_SIZENESW
-            ),
-            ResizeHandle(
-                self, "bottomleft", True, None, "x", pygame.SYSTEM_CURSOR_SIZENESW
-            ),
-            ResizeHandle(
-                self, "bottomright", True, None, None, pygame.SYSTEM_CURSOR_SIZENWSE
-            ),
-            ResizeHandle(self, "top", False, "x", "y", pygame.SYSTEM_CURSOR_SIZENS),
-            ResizeHandle(self, "left", False, "y", "x", pygame.SYSTEM_CURSOR_SIZEWE),
-            ResizeHandle(self, "bottom", False, "x", None, pygame.SYSTEM_CURSOR_SIZENS),
-            ResizeHandle(self, "right", False, "y", None, pygame.SYSTEM_CURSOR_SIZEWE),
-        ]
+        self.custom_borders = mili.CustomWindowBorders(
+            self.window,
+            RESIZE_SIZE,
+            RESIZE_SIZE * 2,
+            30,
+            True,
+            RATIO_MIN,
+            on_resize=lambda: (self.make_bg_image(), self.on_resize_move()),
+            on_move=self.on_resize_move,
+            on_end_move=self.on_end_move_resize,
+            on_end_resize=self.on_end_move_resize,
+        )
 
     def init_load_icons(self):
         self.close_image = load_icon("close")
@@ -332,6 +322,17 @@ class MusicPlayerApp(mili.GenericApp):
             + (pygame.time.get_ticks() - self.music_play_time) / 1000
         )
 
+    def set_music_pos(self, pos):
+        if (
+            self.music is None
+            or not self.music.pos_supported
+            or self.music.duration in [None, NotCached]
+        ):
+            return
+        self.music_play_time = pygame.time.get_ticks()
+        self.music_play_offset = pos
+        pygame.mixer.music.set_pos(pos)
+
     def add_to_history(self):
         pos = self.get_music_pos()
         data = HistoryData(self.music, pos, self.music.duration)
@@ -400,9 +401,6 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_videoclip = None
         self.discord_presence.update()
 
-    def on_quit(self):
-        self.save()
-
     def save(self):
         if self.music is not None:
             self.add_to_history()
@@ -440,7 +438,7 @@ class MusicPlayerApp(mili.GenericApp):
                     pygame.image.save(
                         playlist.cover, f"data/covers/{playlist.name}.png"
                     )
-        print("Data saved correctly.")
+        print("Data saved correctly")
 
     def update(self):
         if pygame.time.get_ticks() - self.last_save >= SAVE_COOLDOWN:
@@ -464,12 +462,13 @@ class MusicPlayerApp(mili.GenericApp):
 
         self.stolen_cursor = False
         self.cursor_hover = False
-        if self.custom_title:
-            self.stolen_cursor = self.update_borders()
+        if self.custom_title and self.can_abs_interact():
+            self.window_stop_special = False
+            self.stolen_cursor = self.custom_borders.update()
 
         ratio = self.window.size[0] / self.window.size[1]
-        if ratio < 0.45:
-            self.window.size = (self.window.size[1] * 0.46, self.window.size[1])
+        if ratio < RATIO_MIN:
+            self.window.size = (self.window.size[1] * RATIO_MIN, self.window.size[1])
             self.make_bg_image()
 
         multx = self.window.size[0] / UI_SIZES[0]
@@ -478,7 +477,6 @@ class MusicPlayerApp(mili.GenericApp):
 
         if self.custom_title:
             self.tbarh = 30
-            self.tbar_rect = pygame.Rect(0, 0, self.window.size[0], self.tbarh)
         else:
             self.tbarh = 0
 
@@ -498,75 +496,6 @@ class MusicPlayerApp(mili.GenericApp):
         else:
             if self.discord_presence.connecting:
                 self.discord_presence.update_connecting()
-
-    def update_borders(self):
-        if not self.can_abs_interact():
-            return True
-        self.window_stop_special = False
-
-        just = pygame.mouse.get_just_pressed()[0]
-        mpos = pygame.Vector2(pygame.mouse.get_pos())
-        pressed = pygame.mouse.get_pressed()[0]
-
-        for handle in self.resize_handles:
-            handle.make_rect()
-
-        stolen_cursor = False
-        if not self.window_resize:
-            if self.tbar_rect.collidepoint(mpos):
-                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
-                stolen_cursor = True
-            for handle in self.resize_handles:
-                if handle.rect.collidepoint(mpos):
-                    pygame.mouse.set_cursor(handle.cursor)
-                    stolen_cursor = True
-                    break
-
-        if just:
-            for handle in self.resize_handles:
-                if handle.rect.collidepoint(mpos):
-                    self.window_resize = True
-                    self.resize_handle = handle
-                    self.resize_gmpos = mpos + self.window.position
-                    self.resize_winpos = self.window.position
-                    self.resize_winsize = self.window.size
-                    break
-        if pressed:
-            if self.window_resize:
-                self.resize_handle.update(mpos)
-        else:
-            if self.window_resize:
-                self.window_stop_special = True
-            self.window_resize = False
-
-        if self.window_resize:
-            return stolen_cursor
-
-        if just and self.tbar_rect.collidepoint(mpos):
-            self.drag_rel_pos = mpos
-            self.drag_press_pos = pygame.Vector2(
-                self.drag_rel_pos + self.window.position
-            )
-            self.window_drag = True
-            self.window_drag_effective = False
-
-        if pressed:
-            if not just and self.window_drag:
-                new = pygame.Vector2(self.window.position) + pygame.mouse.get_pos()
-                prev = pygame.Vector2(self.window.position)
-                self.window.position = (
-                    self.drag_press_pos
-                    + (new - self.drag_press_pos)
-                    - self.drag_rel_pos
-                )
-                if (prev - self.window.position).length() != 0:
-                    self.window_drag_effective = True
-        else:
-            if self.window_drag and self.window_drag_effective:
-                self.window_stop_special = True
-            self.window_drag = False
-            self.window_drag_effective = False
-        return stolen_cursor
 
     def ui(self):
         self.mili.rect({"color": (BG_CV,) * 3, "border_radius": 0})
@@ -612,9 +541,21 @@ class MusicPlayerApp(mili.GenericApp):
                     "bottom",
                 )
 
-        if not self.stolen_cursor and self.cursor_hover:
+        if (
+            self.view_state == "list"
+            and self.custom_title
+            and pygame.key.get_pressed()[pygame.K_TAB]
+        ):
+            self.mili.text_element(
+                "developer version 30",
+                {"size": self.mult(13), "color": (100,) * 3},
+                None,
+                mili.FLOATING,
+            )
+
+        if not self.stolen_cursor and self.cursor_hover and self.focused:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
-        elif not self.stolen_cursor:
+        elif not self.stolen_cursor and self.focused:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
     def ui_top(self):
@@ -724,6 +665,7 @@ class MusicPlayerApp(mili.GenericApp):
             self.window.size = self.before_maximize_data[1]
             self.maximized = False
             self.before_maximize_data = None
+            self.custom_borders.dragging = self.custom_borders.resizing = False
         else:
             self.before_maximize_data = self.window.position, self.window.size
             self.window.position = (0, 0)
@@ -735,11 +677,19 @@ class MusicPlayerApp(mili.GenericApp):
     def action_minimize(self):
         self.window.minimize()
 
+    def on_end_move_resize(self):
+        if self.custom_borders.cumulative_relative.length() != 0:
+            self.window_stop_special = True
+
+    def on_resize_move(self):
+        if self.maximized and self.custom_borders.relative.length() != 0:
+            self.action_maximize()
+
     def can_interact(self):
         return (
             self.can_abs_interact()
-            and not self.window_drag
-            and not self.window_resize
+            and not self.custom_borders.resizing
+            and not self.custom_borders.dragging
             and not self.window_stop_special
         )
 
@@ -820,7 +770,7 @@ class MusicPlayerApp(mili.GenericApp):
                         ("Understood",),
                     )
                     return
-        self.on_quit()
+        self.save()
         pygame.quit()
         raise SystemExit
 

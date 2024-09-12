@@ -32,6 +32,8 @@ class MusicControlsUI(UIComponent):
         self.pause_image = load_icon("pause")
         self.skip_next_image = load_icon("skip_next")
         self.skip_previous_image = load_icon("skip_previous")
+        self.skip5_image = load_icon("skip5")
+        self.back5_image = load_icon("back5")
 
         self.minip_image = load_icon("opennew")
         self.maxip_image = pygame.transform.flip(self.minip_image, True, True)
@@ -242,11 +244,7 @@ class MusicControlsUI(UIComponent):
                 if not mpressed:
                     self.timebar_controlled = False
                     if self.timebar_pos is not None:
-                        pygame.mixer.music.set_pos(
-                            self.timebar_pos * self.app.music.duration
-                        )
-                        self.app.music_play_time = pygame.time.get_ticks()
-                        self.app.music_play_offset = (
+                        self.app.set_music_pos(
                             self.timebar_pos * self.app.music.duration
                         )
                     self.timebar_pos = None
@@ -276,13 +274,7 @@ class MusicControlsUI(UIComponent):
             )
             if not self.timebar_controlled:
                 if handle.left_just_released and self.app.can_interact():
-                    pygame.mixer.music.set_pos(
-                        self.slider.valuex * self.app.music.duration
-                    )
-                    self.app.music_play_time = pygame.time.get_ticks()
-                    self.app.music_play_offset = (
-                        self.slider.valuex * self.app.music.duration
-                    )
+                    self.app.set_music_pos(self.slider.valuex * self.app.music.duration)
                 if not handle.left_pressed:
                     self.slider.valuex = percentage
                     self.handle_percentage = None
@@ -310,6 +302,7 @@ class MusicControlsUI(UIComponent):
             diff = size - cont.rect.w
             if not self.app.focused:
                 self.offset = 0
+                self.offset_restart_time = pygame.time.get_ticks()
             else:
                 if diff > 0:
                     if pygame.time.get_ticks() - self.offset_restart_time >= 2000:
@@ -369,10 +362,14 @@ class MusicControlsUI(UIComponent):
                 "offset": (0, -self.mult(5)),
             },
         ):
+            shift = pygame.key.get_pressed()[pygame.K_LSHIFT]
             self.ui_control_btn(self.app.reset_image, self.action_rewind, 30, 0)
             if self.app.music_index > 0:
                 self.ui_control_btn(
-                    self.skip_previous_image, self.action_skip_previous, 40, 1
+                    self.back5_image if shift else self.skip_previous_image,
+                    self.action_backwards_5 if shift else self.action_skip_previous,
+                    40,
+                    1,
                 )
             self.ui_control_btn(
                 self.play_image if self.app.music_paused else self.pause_image,
@@ -381,7 +378,12 @@ class MusicControlsUI(UIComponent):
                 2,
             )
             if self.app.music_index < len(self.app.music.playlist.musiclist) - 1:
-                self.ui_control_btn(self.skip_next_image, self.action_skip_next, 40, 3)
+                self.ui_control_btn(
+                    self.skip5_image if shift else self.skip_next_image,
+                    self.action_forward_5 if shift else self.action_skip_next,
+                    40,
+                    3,
+                )
             self.ui_control_btn(
                 self.app.loopon_image
                 if self.app.music_loops
@@ -482,6 +484,29 @@ class MusicControlsUI(UIComponent):
             self.app.music_paused = True
         self.app.discord_presence.update()
 
+    def move_pos_5(self, amount):
+        if not self.app.music.pos_supported and self.app.music.duration in [
+            None,
+            NotCached,
+        ]:
+            return
+        pos = self.app.get_music_pos()
+        new_pos = pygame.math.clamp(pos + amount, 0, self.app.music.duration)
+        if new_pos >= self.app.music.duration:
+            self.action_skip_next()
+            return
+        if new_pos <= 0:
+            self.action_skip_previous()
+            return
+        self.slider.valuex = new_pos / self.app.music.duration
+        self.app.set_music_pos(new_pos)
+
+    def action_forward_5(self):
+        self.move_pos_5(5)
+
+    def action_backwards_5(self):
+        self.move_pos_5(-5)
+
     def action_skip_next(self, stop_if_end=False, consider_loop=False):
         if len(self.app.music.playlist.musiclist) <= 0:
             if stop_if_end:
@@ -564,6 +589,10 @@ class MusicControlsUI(UIComponent):
                 self.action_skip_next(True, True)
             elif Keybinds.check("previous_track", event, 1073742083):
                 self.action_skip_previous()
+            elif Keybinds.check("skip_5_s", event):
+                self.action_forward_5()
+            elif Keybinds.check("back_5_s", event):
+                self.action_backwards_5()
             elif Keybinds.check("rewind_music", event):
                 self.action_rewind()
             elif Keybinds.check("toggle_miniplayer", event):

@@ -31,6 +31,7 @@ class PlaylistViewerUI(UIComponent):
 
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 8, 3, 3, 0, "y")
+        self.sbar_size = self.scrollbar.short_size
         self.cover_cache = mili.ImageCache()
         self.bigcover_cache = mili.ImageCache()
         self.black_cache = mili.ImageCache()
@@ -139,6 +140,7 @@ class PlaylistViewerUI(UIComponent):
                 )
             if len(paths) > 0:
                 self.scroll.update(scroll_cont)
+                self.scrollbar.short_size = self.mult(self.sbar_size)
                 self.scrollbar.update(scroll_cont)
 
                 self.ui_scrollbar()
@@ -311,10 +313,13 @@ class PlaylistViewerUI(UIComponent):
             (0, 0, 0, self.mult(80)),
             {
                 "fillx": "100" if not self.scrollbar.needed else "98",
-                "offset": self.scroll.get_offset(),
+                "offset": (
+                    self.scrollbar.needed * -self.mult(self.sbar_size / 2),
+                    self.scroll.get_offset()[1],
+                ),
                 "padx": self.mult(8),
                 "axis": "x",
-                "align": "first" if self.app.ui_mult < 1.12 else "center",
+                "align": "center",
                 "anchor": "first",
             },
         ) as cont:

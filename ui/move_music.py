@@ -10,6 +10,7 @@ class MoveMusicUI(UIComponent):
         self.cache = mili.ImageCache()
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 7, 0, 0, 0, "y")
+        self.sbar_size = self.scrollbar.short_size
         self.music: MusicData = None
 
     def ui(self):
@@ -64,6 +65,7 @@ class MoveMusicUI(UIComponent):
             None, {"fillx": True, "filly": True}, get_data=True
         ) as cont:
             self.scroll.update(cont)
+            self.scrollbar.short_size = self.mult(self.sbar_size)
             self.scrollbar.update(cont)
             for playlist in self.app.playlists:
                 if playlist is self.app.playlist_viewer.playlist:
@@ -75,13 +77,14 @@ class MoveMusicUI(UIComponent):
                         "fillx": "98" if self.scrollbar.needed else True,
                         "anchor": "first",
                         "axis": "x",
-                        "offset": self.scroll.get_offset(),
-                        "align": "first"
-                        if (self.scrollbar.needed or self.app.ui_mult < 1.12)
-                        else "center",
+                        "offset": (
+                            self.scrollbar.needed * -self.mult(self.sbar_size / 2),
+                            self.scroll.get_offset()[1],
+                        ),
+                        "align": "center",
                     },
                 ) as it:
-                    self.mili.rect({"color": (cond(self.app, it, *LISTM_CV),) * 3})
+                    self.mili.rect({"color": (cond(self.app, it, *MENUB_CV),) * 3})
                     cover = self.app.playlist_cover
                     if playlist.cover is not None:
                         cover = playlist.cover

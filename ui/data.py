@@ -10,7 +10,7 @@ def load_cover_async(path, obj):
     obj.cover = pygame.image.load(path).convert()
 
 
-def get_cover_async(music, videofile, cover_path):
+def get_cover_async(music: "MusicData", videofile: moviepy.VideoClip, cover_path):
     try:
         frame: numpy.ndarray = videofile.get_frame(videofile.duration / 2)
         surface = pygame.image.frombytes(frame.tobytes(), videofile.size, "RGB")
@@ -20,7 +20,7 @@ def get_cover_async(music, videofile, cover_path):
         music.cover = None
 
 
-def convert_music_async(music, audiofile, new_path):
+def convert_music_async(music: "MusicData", audiofile: moviepy.AudioClip, new_path):
     try:
         audiofile.write_audiofile(str(new_path), verbose=True)
         music.pending = False
@@ -29,63 +29,6 @@ def convert_music_async(music, audiofile, new_path):
 
 
 class NotCached: ...
-
-
-class ResizeHandle:
-    def __init__(self, app: "MusicPlayerApp", name, corner, axis, move_window, cursor):
-        self.app = app
-        self.name = name
-        self.corner = corner
-        self.axis = axis
-        self.axis_lock = "x" if self.axis == "y" else "y" if self.axis == "x" else None
-        self.move_window = move_window
-        self.cursor = cursor
-
-    def make_rect(self):
-        if self.corner:
-            rect = pygame.Rect(0, 0, RESIZE_SIZE * 2, RESIZE_SIZE * 2)
-        else:
-            rect = pygame.Rect(
-                0,
-                0,
-                self.app.window.size[0] if self.axis == "x" else RESIZE_SIZE,
-                self.app.window.size[1] if self.axis == "y" else RESIZE_SIZE,
-            )
-        if self.name == "topright":
-            rect = rect.move_to(topright=(self.app.window.size[0], 0))
-        elif self.name == "bottomleft" or self.name == "bottom":
-            rect = rect.move_to(bottomleft=(0, self.app.window.size[1]))
-        elif self.name == "bottomright" or self.name == "right":
-            rect = rect.move_to(bottomright=self.app.window.size)
-        self.rect = rect
-
-    def update(self, mpos):
-        rel = self.app.window.position + mpos - self.app.resize_gmpos
-        posrel = pygame.Vector2()
-        if self.axis_lock == "y":
-            rel.x = 0
-        elif self.axis_lock == "x":
-            rel.y = 0
-        if self.move_window == "x":
-            rel.x *= -1
-            posrel.x = rel.x
-        elif self.move_window == "y":
-            rel.y *= -1
-            posrel.y = rel.y
-        elif self.move_window == "xy":
-            rel.x *= -1
-            rel.y *= -1
-            posrel = rel
-        newsize = self.app.resize_winsize + rel
-        if any([v <= 0 for v in newsize]):
-            return
-        ratio = newsize[0] / newsize[1]
-        if ratio < 0.45:
-            newsize = (newsize[1] * 0.46, newsize[1])
-        self.app.window.size = newsize
-        if posrel.length() != 0:
-            self.app.window.position = self.app.resize_winpos - posrel
-        self.app.make_bg_image()
 
 
 class MusicData:

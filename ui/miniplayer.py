@@ -1,6 +1,5 @@
 import mili
 import pygame
-import typing
 import ctypes
 from ui.common import *
 
@@ -25,6 +24,16 @@ class MiniplayerUI:
         self.click_event = False
         self.start_time = pygame.time.get_ticks()
         self.mouse_data = []
+        self.window_stop_special = False
+        self.custom_borders = mili.CustomWindowBorders(
+            self.window,
+            RESIZE_SIZE,
+            RESIZE_SIZE * 2,
+            0,
+            True,
+            on_end_move=self.on_end_move_resize,
+            on_end_resize=self.on_end_move_resize,
+        )
 
         self.mili.default_styles(
             text={
@@ -63,6 +72,7 @@ class MiniplayerUI:
         self.focused = True
         self.start_time = pygame.time.get_ticks()
         self.mouse_data = []
+        self.custom_borders.window = self.window
 
     def action_toggle_border(self):
         if self.canresize:
@@ -79,22 +89,19 @@ class MiniplayerUI:
         self.window = None
         self.focused = False
 
-    def move_window(self):
-        if not self.can_interact():
-            return
-
-        just = pygame.mouse.get_just_pressed()[0]
-        if just:
-            self.rel_pos = pygame.Vector2(pygame.mouse.get_pos())
-            self.press_pos = pygame.Vector2(self.rel_pos + self.window.position)
-
-        if pygame.mouse.get_pressed()[0] and not just:
-            new = pygame.Vector2(self.window.position) + pygame.mouse.get_pos()
-            self.window.position = (
-                self.press_pos + (new - self.press_pos) - self.rel_pos
-            )
+    def on_end_move_resize(self):
+        if self.custom_borders.cumulative_relative.length() != 0:
+            self.window_stop_special = True
 
     def can_interact(self):
+        return (
+            self.can_abs_interact()
+            and not self.custom_borders.resizing
+            and not self.custom_borders.dragging
+            and not self.window_stop_special
+        )
+
+    def can_abs_interact(self):
         if self.app.sdl2 is not None:
             return self.window is not None and (
                 (not self.app.focused and self.hovered) or self.focused
@@ -151,10 +158,30 @@ class MiniplayerUI:
                 self.click_event = True
             self.pressed = False
 
+    def move_window(self):
+        if not self.can_interact():
+            return
+
+        just = pygame.mouse.get_just_pressed()[0]
+        if just:
+            self.rel_pos = pygame.Vector2(pygame.mouse.get_pos())
+            self.press_pos = pygame.Vector2(self.rel_pos + self.window.position)
+
+        if pygame.mouse.get_pressed()[0] and not just:
+            new = pygame.Vector2(self.window.position) + pygame.mouse.get_pos()
+            self.window.position = (
+                self.press_pos + (new - self.press_pos) - self.rel_pos
+            )
+
     def ui(self):
         self.get_hovered()
-        if self.focused:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        self.custom_borders.titlebar_height = self.window.size[1]
+        self.window_stop_special = False
+        if self.window.borderless:
+            if self.can_abs_interact():
+                self.custom_borders.update()
+        else:
+            self.move_window()
 
         wm = self.window.size[0] / MINIP_PREFERRED_SIZES[0]
         hm = self.window.size[1] / MINIP_PREFERRED_SIZES[1]
@@ -262,7 +289,7 @@ class MiniplayerUI:
                 )
 
     def ui_control_btn(self, image, size, action, animi):
-        anim = self.anims[animi]
+        anim: mili.animation.ABAnimation = self.anims[animi]
         size = self.mult(size)
         if it := self.mili.element((0, 0, size, size), {"align": "center"}):
             if it.hovered and self.can_interact():
@@ -325,7 +352,6 @@ class MiniplayerUI:
         if self.window is None:
             return
 
-        self.move_window()
         surf = self.window.get_surface()
         self.mili.set_canva(surf)
         surf.fill("black")

@@ -19,6 +19,7 @@ class ListViewerUI(UIComponent):
 
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 8, 3, 3, 0, "y")
+        self.sbar_size = self.scrollbar.short_size
 
     def ui_top_buttons(self):
         if self.app.custom_title:
@@ -50,6 +51,7 @@ class ListViewerUI(UIComponent):
         ) as scroll_cont:
             if len(self.app.playlists) > 0:
                 self.scroll.update(scroll_cont)
+                self.scrollbar.short_size = self.mult(self.sbar_size)
                 self.scrollbar.update(scroll_cont)
 
                 for playlist in self.app.playlists:
@@ -106,10 +108,13 @@ class ListViewerUI(UIComponent):
             (0, 0, 0, self.mult(80)),
             {
                 "fillx": "100" if not self.scrollbar.needed else "98",
-                "offset": self.scroll.get_offset(),
+                "offset": (
+                    self.scrollbar.needed * -self.mult(self.sbar_size / 2),
+                    self.scroll.get_offset()[1],
+                ),
                 "padx": self.mult(10),
                 "axis": "x",
-                "align": "first" if self.app.ui_mult < 1.12 else "center",
+                "align": "center",
             },
         ) as cont:
             self.ui_playlist_bg(playlist, cont)
