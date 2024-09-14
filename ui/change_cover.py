@@ -22,6 +22,7 @@ class ChangeCoverUI(UIComponent):
         self.img_cache = mili.ImageCache()
 
     def ui(self):
+        self.mili.id_checkpoint(3000 + 50)
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):

@@ -1,8 +1,12 @@
 import mili
 import pygame
+import pathlib
 import platform
+import threading
 import subprocess
 from ui.common import *
+import moviepy.editor as moviepy
+from ui.data import convert_music_async
 from ui.data import Playlist, MusicData
 from ui.add_music import AddMusicUI
 from ui.entryline import UIEntryline
@@ -18,7 +22,7 @@ class PlaylistViewerUI(UIComponent):
         self.anim_cover = animation(-5)
         self.anim_back = animation(-3)
         self.anim_search = animation(-5)
-        self.menu_anims = [animation(-4) for i in range(4)]
+        self.menu_anims = [animation(-4) for i in range(5)]
         self.modal_state = "none"
         self.middle_selected = None
         self.search_active = False
@@ -43,6 +47,7 @@ class PlaylistViewerUI(UIComponent):
         self.search_image = load_icon("search")
         self.searchoff_image = load_icon("searchoff")
         self.backspace_image = load_icon("backspace")
+        self.convert_image = load_icon("convert")
 
     def sort_searched_songs(self):
         scores = {}
@@ -148,6 +153,7 @@ class PlaylistViewerUI(UIComponent):
                 self.scrollbar.update(scroll_cont)
 
                 self.ui_scrollbar()
+                self.mili.id_checkpoint(50)
 
                 drawn_musics = 0
                 for posi, (musici, path) in enumerate(paths):
@@ -359,18 +365,7 @@ class PlaylistViewerUI(UIComponent):
                 if cont.left_just_released:
                     self.action_start_playing(music, idx)
                 elif cont.just_released_button == pygame.BUTTON_RIGHT:
-                    self.app.open_menu(
-                        music,
-                        (self.app.rename_image, self.action_rename, self.menu_anims[0]),
-                        (self.forward_image, self.action_forward, self.menu_anims[1]),
-                        (
-                            self.app.music_controls.minip_image,
-                            self.action_show_in_explorer,
-                            self.menu_anims[3],
-                            "30",
-                        ),
-                        (self.app.delete_image, self.action_delete, self.menu_anims[2]),
-                    )
+                    self.open_menu(music)
                 elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
                     self.middle_selected = music
         return False
@@ -408,6 +403,76 @@ class PlaylistViewerUI(UIComponent):
                     "border_radius": 0,
                 }
             )
+
+    def open_menu(self, music: MusicData):
+        buttons = [
+            (self.app.rename_image, self.action_rename, self.menu_anims[0]),
+            (self.forward_image, self.action_forward, self.menu_anims[1]),
+            (
+                self.app.music_controls.minip_image,
+                self.action_show_in_explorer,
+                self.menu_anims[2],
+                "30",
+            ),
+        ]
+        if (
+            music.realpath.suffix != ".mp3"
+            and not music.isvideo
+            and not music.converted
+            and not music.isconvertible
+        ):
+            buttons.append(
+                (self.convert_image, self.action_convert, self.menu_anims[3], "30")
+            )
+        buttons.append(
+            (self.app.delete_image, self.action_delete, self.menu_anims[4]),
+        )
+        self.app.open_menu(music, *buttons)
+
+    def action_convert(self):
+        btn = pygame.display.message_box(
+            "Confirm conversion",
+            "Are you sure you want to convert this audio file to an MP3 file? "
+            "The original file will not be modified. MP3 files allow track positioning. "
+            f"You can find the converted file at 'data/mp3_converted/{self.playlist.name}_{self.app.menu_data.realstem}.mp3' "
+            "which will be played automatically.",
+            "warn",
+            None,
+            ("Proceed", "Cancel"),
+        )
+        if btn == 1:
+            return
+        music = self.app.menu_data
+        new_path = pathlib.Path(
+            f"data/mp3_converted/{self.playlist.name}_{music.realstem}.mp3"
+        ).resolve()
+
+        try:
+            audiofile = moviepy.AudioFileClip(str(music.realpath))
+        except Exception as exc:
+            pygame.display.message_box(
+                "Could not convert music",
+                f"Could not convert '{music.realpath}' to MP3 due to external exception: '{exc}'.",
+                "error",
+                None,
+                ("Understood",),
+            )
+            return
+
+        if music is self.app.music:
+            self.app.end_music()
+
+        music.audiofile = audiofile
+        music.pending = True
+        music.audio_converting = True
+        music.load_exc = None
+        music.audiopath = new_path
+        music.playlist.musictable.pop(music.realpath)
+        music.playlist.musictable[music.audiopath] = music
+        thread = threading.Thread(
+            target=convert_music_async, args=(music, audiofile, new_path)
+        )
+        thread.start()
 
     def action_search(self):
         if self.search_active:

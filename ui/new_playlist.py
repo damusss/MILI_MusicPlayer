@@ -22,6 +22,7 @@ class NewPlaylistUI(UIComponent):
         self.upload_image = load_icon("upload")
 
     def ui(self):
+        self.mili.id_checkpoint(3000 + 200)
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):
@@ -146,7 +147,7 @@ class NewPlaylistUI(UIComponent):
                 self.app.confirm_image, self.action_create_from_folder, self.anim_create
             )
         self.mili.text_element(
-            "Creating might take some time if MP4 files are present",
+            "Creating might take some time if video files are present",
             {
                 "size": self.mult(16),
                 "color": (150,) * 3,

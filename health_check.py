@@ -7,13 +7,45 @@ import pathlib
 class Playlist:
     def __init__(self, name, filepaths):
         self.name = name
-        self.filepaths = [pathlib.Path(p) for p in filepaths]
+        self.filepaths = [
+            pathlib.Path(p) if isinstance(p, str) else [pathlib.Path(p[0]), p[1]]
+            for p in filepaths
+        ]
         self.mp3_paths = []
         self.cover_path = f"{self.name}.png"
         self.cover_paths = []
 
         for path in self.filepaths:
-            if path.suffix == ".mp4":
+            if isinstance(path, list):
+                path = path[0]
+                mp3_path = f"{self.name}_{path.stem}.mp3"
+                self.mp3_paths.append(mp3_path)
+            if path.suffix[1:].lower() in [
+                "mp4",
+                "webm",
+                "avi",
+                "mkv",
+                "mov",
+                "flv",
+                "wmv",
+                "m4v",
+                "3gp",
+                "mpeg",
+                "mpg",
+                "ogv",
+                "mts",
+                "ts",
+                "aac",
+                "m4a",
+                "wma",
+                "alac",
+                "amr",
+                "au",
+                "snd",
+                "mpc",
+                "tta",
+                "caf",
+            ]:
                 mp3_path = f"{self.name}_{path.stem}.mp3"
                 self.mp3_paths.append(mp3_path)
             cover_path = f"{self.name}_{path.stem}.png"
@@ -69,10 +101,10 @@ def main():
                 anyf2 = True
 
     anyf3 = False
-    if os.path.exists("data/mp3_from_mp4"):
-        for file in os.listdir("data/mp3_from_mp4"):
+    if os.path.exists("data/mp3_converted"):
+        for file in os.listdir("data/mp3_converted"):
             if not check_iterate(playlists, file, "mp3"):
-                path = f"data/mp3_from_mp4/{file}"
+                path = f"data/mp3_converted/{file}"
                 if do_remove:
                     print(f"Removing unused MP3 file: '{path}'")
                     os.remove(path)

@@ -7,13 +7,46 @@ import typing
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
-DEV_VERSION = 31
+DEV_VERSION = 32
 PREFERRED_SIZES = (415, 700)
 MINIP_PREFERRED_SIZES = 200, 200
 UI_SIZES = (480, 720)
 SURF = pygame.Surface((10, 10), pygame.SRCALPHA)
-FORMATS = ["mp4", "wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
-POS_SUPPORTED = ["mp4", "mp3", "ogg", "flac", "mod"]
+VIDEO_SUPPORTED = [
+    "mp4",
+    "webm",
+    "avi",
+    "mkv",
+    "mov",
+    "flv",
+    "wmv",
+    "m4v",
+    "3gp",
+    "mpeg",
+    "mpg",
+    "ogv",
+    "mts",
+    "ts",
+]
+CONVERT_SUPPORTED = [
+    "aac",
+    "m4a",
+    "wma",
+    "alac",
+    "amr",
+    "au",
+    "snd",
+    "mpc",
+    "tta",
+    "caf",
+]
+FORMATS = (
+    VIDEO_SUPPORTED
+    + CONVERT_SUPPORTED
+    + ["wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
+)
+POS_UNSUPPORTED = ["wav", "opus", "wv", "aiff"]
+
 MUSIC_ENDEVENT = pygame.event.custom_type()
 HISTORY_LEN = 100
 RESIZE_SIZE = 3
@@ -23,11 +56,12 @@ BIG_COVER_COOLDOWN = 300
 SAVE_COOLDOWN = 60000 * 2
 RATIO_MIN = 0.5
 BG_CV = 3
-MUSIC_CV = 3, 10, 5
+MUSIC_CV = 3, 18, 8
 LIST_CV = MUSIC_CV
 OVERLAY_CV = 30, 50, 20
-SBAR_CV = 7
-SHANDLE_CV = 15, 20, 10
+SBAR_CV = 8
+BSBAR_CV = 12
+SHANDLE_CV = 18, 25, 15
 MODAL_CV = 15
 MODALB_CV = 25, 45, 20
 MUSICC_CV = 10
@@ -36,7 +70,7 @@ MENU_CV = 6, 20
 MENUB_CV = 20, 30, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
-ALPHA = 170
+ALPHA = 200
 BORDER_CV = 100
 TOPB_CV = 15, 25, 8
 
@@ -147,7 +181,7 @@ class UIComponent:
             self.mili.image(
                 image,
                 mili.style.same(self.mult(3) + anim.value, "padx", "pady")
-                | {"smoothscale": True},
+                | {"smoothscale": True, "cache": mili.ImageCache.get_next_cache()},
             )
             if self.app.can_interact():
                 if it.hovered or it.unhover_pressed:
@@ -158,20 +192,28 @@ class UIComponent:
                     anim.goto_b()
             if it.just_unhovered:
                 anim.goto_a()
+            if not it.absolute_hover and not anim.active and anim.value != anim.a:
+                anim.goto_a()
 
     def ui_overlay_btn(
         self, anim: mili.animation.ABAnimation, on_action, image, side="bottom"
     ):
         size = self.mult(55)
         offset = self.mult(8)
-        xoffset = offset * 0.8
+        xoffset = offset * 0.6
         if (
-            self.app.view_state == "list" and self.app.list_viewer.scrollbar.needed
-        ) or (
-            self.app.view_state == "playlist"
-            and self.app.playlist_viewer.scrollbar.needed
-        ):
-            xoffset = offset * 1.5
+            (
+                self.app.view_state == "list"
+                and self.app.list_viewer.scrollbar.needed
+                and self.app.list_viewer.modal_state == "none"
+            )
+            or (
+                self.app.view_state == "playlist"
+                and self.app.playlist_viewer.scrollbar.needed
+                and self.app.playlist_viewer.modal_state == "none"
+            )
+        ) and self.app.modal_state == "none":
+            xoffset = offset * 1.6
         if it := self.mili.element(
             pygame.Rect(0, 0, size, size).move_to(
                 bottomright=(
@@ -192,7 +234,7 @@ class UIComponent:
         ):
             self.mili.circle(
                 {"color": (cond(self.app, it, *OVERLAY_CV),) * 3, "border_radius": "50"}
-                | mili.style.same(int(anim.value / 1.8), "padx", "pady")
+                | mili.style.same(-self.mult(abs(anim.value) / 1.8), "padx", "pady")
             )
             self.mili.image(
                 image,
@@ -208,6 +250,8 @@ class UIComponent:
                     on_action()
                     anim.goto_a()
             if it.just_unhovered:
+                anim.goto_a()
+            if not it.absolute_hover and not anim.active and anim.value != anim.a:
                 anim.goto_a()
 
     def ui_overlay_top_btn(
@@ -277,6 +321,8 @@ class UIComponent:
                     on_action()
                     anim.goto_a()
             if it.just_unhovered:
+                anim.goto_a()
+            if not it.absolute_hover and not anim.active and anim.value != anim.a:
                 anim.goto_a()
 
 
@@ -349,6 +395,7 @@ class Keybinds:
             "new/add": Binding(pygame.K_a, ctrl=True),
             "save": Binding(pygame.K_s, ctrl=True),
             "open_history": Binding(pygame.K_h, ctrl=True),
+            "open_keybinds": Binding(pygame.K_k, ctrl=True),
             "toggle_search": Binding(pygame.K_f, ctrl=True),
             "erase_input": Binding(pygame.K_BACKSPACE, ctrl=True),
             "change_cover": Binding(pygame.K_c, ctrl=True),
@@ -356,6 +403,8 @@ class Keybinds:
             "rewind_music": Binding(pygame.K_r, ctrl=True),
             "toggle_miniplayer": Binding(pygame.K_d, ctrl=True),
             "music_fullscreen": Binding(pygame.K_F11, ctrl=True),
+            "minimize_window": Binding(pygame.K_l, ctrl=True),
+            "maximize_window": Binding(pygame.K_m, ctrl=True),
             "scroll_up": Binding(pygame.K_PAGEUP, pygame.K_KP9),
             "scroll_down": Binding(pygame.K_PAGEDOWN, pygame.K_KP3),
         }

@@ -26,6 +26,7 @@ class SettingsUI(UIComponent):
         self.keybinds_image = load_icon("keyboard")
 
     def ui(self):
+        self.mili.id_checkpoint(3000 + 400)
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):
@@ -134,9 +135,9 @@ class SettingsUI(UIComponent):
 
             if self.app.volume > 0:
                 self.mili.rect_element(
-                    {"color": (120,) * 3},
-                    (0, 0, bar.rect.w * self.app.volume, bar.rect.h),
-                    {"ignore_grid": True},
+                    {"color": (110,) * 3},
+                    (0, 0, bar.rect.w * self.slider.valuex, bar.rect.h),
+                    {"ignore_grid": True, "blocking": False},
                 )
             handle = self.ui_slider_handle()
             mpressed = pygame.mouse.get_pressed()[0]

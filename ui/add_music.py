@@ -12,10 +12,10 @@ class AddMusicUI(UIComponent):
         self.anim_upload = animation(-3)
         self.selected_files = None
         self.cache = mili.ImageCache()
-
         self.upload_image = load_icon("uploadf")
 
     def ui(self):
+        self.mili.id_checkpoint(3000)
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):
@@ -82,7 +82,7 @@ class AddMusicUI(UIComponent):
 
     def ui_warning(self):
         self.mili.text_element(
-            "Adding might take some time if MP4 files are chosen",
+            "Adding might take some time if video files are chosen",
             {
                 "size": self.mult(16),
                 "color": (150,) * 3,
@@ -125,6 +125,9 @@ class AddMusicUI(UIComponent):
         paths = filedialog.askopenfilenames()
         paths = [pathlib.Path(path) for path in paths]
         paths = [file for file in paths if (file).suffix[1:].lower() in FORMATS]
+        if len(paths) < 0:
+            self.selected_files = None
+            return
         self.selected_files = paths
 
     def confirm_add(self):

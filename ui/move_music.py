@@ -111,7 +111,7 @@ class MoveMusicUI(UIComponent):
     def ui_scrollbar(self):
         if self.scrollbar.needed:
             with self.mili.begin(self.scrollbar.bar_rect, self.scrollbar.bar_style):
-                self.mili.rect({"color": (SBAR_CV * 1.5,) * 3})
+                self.mili.rect({"color": (BSBAR_CV,) * 3})
                 if handle := self.mili.element(
                     self.scrollbar.handle_rect, self.scrollbar.handle_style
                 ):
@@ -128,8 +128,8 @@ class MoveMusicUI(UIComponent):
         if self.music == self.app.music:
             self.app.end_music()
 
-        mp3path = f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.mp3"
-        newmp3path = f"data/mp3_from_mp4/{playlist.name}_{self.music.realstem}.mp3"
+        mp3path = f"data/mp3_converted/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.mp3"
+        newmp3path = f"data/mp3_converted/{playlist.name}_{self.music.realstem}.mp3"
         if os.path.exists(mp3path):
             if not os.path.exists(newmp3path):
                 os.rename(mp3path, newmp3path)

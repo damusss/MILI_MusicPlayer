@@ -16,6 +16,7 @@ class RenameMusicUI(UIComponent):
         self.music: MusicData = None
 
     def ui(self):
+        self.mili.id_checkpoint(3000 + 250)
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):
@@ -122,10 +123,8 @@ class RenameMusicUI(UIComponent):
             self.close()
             return
 
-        mp3path = f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.mp3"
-        newmp3path = (
-            f"data/mp3_from_mp4/{self.app.playlist_viewer.playlist.name}_{new_stem}.mp3"
-        )
+        mp3path = f"data/mp3_converted/{self.app.playlist_viewer.playlist.name}_{self.music.realstem}.mp3"
+        newmp3path = f"data/mp3_converted/{self.app.playlist_viewer.playlist.name}_{new_stem}.mp3"
         if os.path.exists(mp3path):
             if not os.path.exists(newmp3path):
                 os.rename(mp3path, newmp3path)

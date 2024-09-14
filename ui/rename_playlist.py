@@ -14,6 +14,7 @@ class RenamePlaylistUI(UIComponent):
         self.cache = mili.ImageCache()
 
     def ui(self):
+        self.mili.id_checkpoint(3000 + 300)
         with self.mili.begin(
             ((0, 0), self.app.window.size), {"ignore_grid": True} | mili.CENTER
         ):
@@ -58,7 +59,7 @@ class RenamePlaylistUI(UIComponent):
         )
         self.ui_image_btn(self.app.confirm_image, self.action_confirm, self.anim_create)
         self.mili.text_element(
-            "Renaming might take some time if MP4 files were present",
+            "Renaming might take some time if video files were present",
             {
                 "size": self.mult(16),
                 "color": (150,) * 3,
@@ -105,11 +106,11 @@ class RenamePlaylistUI(UIComponent):
 
     def final_rename(self, name):
         old_name = self.app.menu_data.name
-        for file in os.listdir("data/mp3_from_mp4"):
+        for file in os.listdir("data/mp3_converted"):
             if file.startswith(old_name):
-                old_path = pathlib.Path(f"data/mp3_from_mp4/{file}").resolve()
+                old_path = pathlib.Path(f"data/mp3_converted/{file}").resolve()
                 new_path = pathlib.Path(
-                    f"data/mp3_from_mp4/{name}{file.removeprefix(old_name)}"
+                    f"data/mp3_converted/{name}{file.removeprefix(old_name)}"
                 )
                 if not os.path.exists(new_path):
                     os.rename(old_path, new_path)

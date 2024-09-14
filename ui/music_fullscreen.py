@@ -12,6 +12,7 @@ class MusicFullscreenUI(UIComponent):
         self.fullscreenclose_image = load_icon("fullscreenclose")
 
     def ui(self):
+        self.mili.id_checkpoint(3000 + 100)
         if self.app.music is None:
             self.close()
             return

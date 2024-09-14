@@ -18,6 +18,7 @@ class EditKeybindsUI(UIComponent):
         self.listening_ctrl = False
 
     def ui(self):
+        self.mili.id_checkpoint(3000 + 500)
         handle_arrow_scroll(self.app, self.scroll, self.scrollbar)
 
         with self.mili.begin(
@@ -79,7 +80,7 @@ class EditKeybindsUI(UIComponent):
     def ui_scrollbar(self):
         if self.scrollbar.needed:
             with self.mili.begin(self.scrollbar.bar_rect, self.scrollbar.bar_style):
-                self.mili.rect({"color": (SBAR_CV * 1.5,) * 3})
+                self.mili.rect({"color": (BSBAR_CV,) * 3})
                 if handle := self.mili.element(
                     self.scrollbar.handle_rect, self.scrollbar.handle_style
                 ):

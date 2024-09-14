@@ -162,7 +162,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.window.set_icon(self.playlist_cover)
 
     def init_load_data(self):
-        for name in ["mp3_from_mp4", "covers", "music_covers"]:
+        for name in ["mp3_converted", "covers", "music_covers"]:
             if not os.path.exists(f"data/{name}"):
                 os.mkdir(f"data/{name}")
 
@@ -172,7 +172,12 @@ class MusicPlayerApp(mili.GenericApp):
 
         for pdata in playlist_data:
             name = pdata["name"]
-            paths = [pathlib.Path(path) for path in pdata["paths"]]
+            paths = [
+                pathlib.Path(path)
+                if isinstance(path, str)
+                else [pathlib.Path(path[0]), path[1]]
+                for path in pdata["paths"]
+            ]
             self.playlists.append(Playlist(name, paths, self.loading_image))
 
         for hdata in history_data:
@@ -203,7 +208,14 @@ class MusicPlayerApp(mili.GenericApp):
             circle={"antialias": True},
             image={"smoothscale": True},
         )
-        mili.ImageCache.preallocate_caches(2000)
+        minimum_caches = (
+            (
+                sum([len(playlist.musiclist) for playlist in self.playlists])
+                + len(self.playlists)
+            )
+            * 3
+        ) + 100
+        mili.ImageCache.preallocate_caches(max(1000, minimum_caches))
 
     def init_load_settings(self):
         custom_title = True
@@ -364,7 +376,6 @@ class MusicPlayerApp(mili.GenericApp):
         self.music = music
         self.music_paused = False
         self.music_index = idx
-        self.music_play_time = pygame.time.get_ticks()
         self.music_start_time = time.time()
         self.music_play_offset = 0
         if self.music.duration is NotCached:
@@ -386,6 +397,8 @@ class MusicPlayerApp(mili.GenericApp):
         pygame.mixer.music.play(0)
         pygame.mixer.music.set_endevent(MUSIC_ENDEVENT)
         pygame.mixer.music.set_volume(self.volume)
+
+        self.music_play_time = pygame.time.get_ticks()
         self.discord_presence.update()
 
     def end_music(self):
@@ -412,7 +425,10 @@ class MusicPlayerApp(mili.GenericApp):
         playlist_data = [
             {
                 "name": p.name,
-                "paths": [str(m.realpath) for m in p.musiclist],
+                "paths": [
+                    [str(m.realpath), "converted"] if m.converted else str(m.realpath)
+                    for m in p.musiclist
+                ],
             }
             for p in self.playlists
         ]
@@ -517,6 +533,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.ui_top()
 
         with self.mili.begin(None, {"fillx": True, "filly": True} | mili.PADLESS):
+            self.mili.id_checkpoint(20)
             if self.view_state == "list":
                 self.list_viewer.ui()
             elif self.view_state == "playlist":
@@ -531,8 +548,10 @@ class MusicPlayerApp(mili.GenericApp):
             elif self.modal_state == "keybinds":
                 self.edit_keybinds.ui()
 
+            self.mili.id_checkpoint(5000)
             self.music_controls.ui()
 
+            self.mili.id_checkpoint(5100)
             if (
                 self.playlist_viewer.modal_state == "none"
                 and self.list_viewer.modal_state == "none"
@@ -557,15 +576,11 @@ class MusicPlayerApp(mili.GenericApp):
                 mili.FLOATING,
             )
 
-        if self.modal_state not in ["fullscreen", "none"]:
+        if self.modal_state != "none" and self.menu_data != "controls":
             self.close_menu()
+        self.mili.id_checkpoint(5200)
         if self.menu_open:
             self.ui_menu()
-
-        if self.view_state == "playlist":
-            self.playlist_viewer.ui_top_buttons()
-        elif self.view_state == "list":
-            self.list_viewer.ui_top_buttons()
 
         if not self.stolen_cursor and self.cursor_hover and self.focused:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
@@ -610,6 +625,10 @@ class MusicPlayerApp(mili.GenericApp):
                 self.close_image,
                 "right",
             )
+        if self.view_state == "playlist":
+            self.playlist_viewer.ui_top_buttons()
+        elif self.view_state == "list":
+            self.list_viewer.ui_top_buttons()
 
     def ui_bg_effect(self):
         if not self.bg_effect:
@@ -780,6 +799,13 @@ class MusicPlayerApp(mili.GenericApp):
                 elif Keybinds.check("open_history", event):
                     self.open_settings()
                     self.settings.action_history()
+                elif Keybinds.check("open_keybinds", event):
+                    self.open_settings()
+                    self.settings.action_keybinds()
+                elif Keybinds.check("minimize_window", event):
+                    self.action_minimize()
+                elif Keybinds.check("maximize_window", event):
+                    self.action_maximize()
 
     def quit(self):
         for playlist in self.playlists:

@@ -11,27 +11,30 @@ A MILI UI demo featuring a rich music player.<br>
 - History
 - Keybinds
 - Playlists (load from folder, rename, delete, reorder, upload/generate cover, search)
-- Musics (add, rename, delete, reorder, move to playlist)
+- Musics (add, rename, delete, reorder, move to playlist, show in explorer, convert to MP3)
 
-  - **Audio and Video**: MP4
+  - **Audio and Video**: MP4, WEBM, AVI, MKV, MOV, FLV, WMV, M4V, 3GP, MPEG, MPG, OGV, MTS, TS
 
-  - **Audio Only**: WAV, MP3, OGG, FLAC, OPUS, WV, MOD, AIFF
+  - **Audio Only**: MP3, WAV, OGG, FLAC, OPUS, WV, MOD, AIFF, AAC, M4A, WMA, ALAC, AMR, AU, SND, MPC, TTA, CAF
 
   - **Unsupported Track Positioning**: WAV, OPUS, WV, AIFF
 
 - Controls
   - Pause, Volume/mute, Next/previous/auto-next, Rewind
-  - MP4 Video Player
   - Background effects
   - Loop (playlist/music), Shuffle
   - Miniplayer
+  - Video player (+ maximized/fullscreen)
+
+The file extension must always match the music format.
+Due to SDL limitations only a subset of the supported formats can be played directly, the rest will have a copy converted to MP3.
+Videos must have an associated audio track to be valid.
 
 # Special Gestures
 
 - Hold the mouse wheel button and scroll to reorder playlists and musics
 - Click on the currently playing track's cover/video to jump to the track in the playlist
 - Hover a playlist's cover or the currently playing track's cover/video for a fraction of a second to view it full screen
-- Holding shift while pressing the skip/previous buttons will respectively skip or go back 5 seconds instead of the whole track
 
 # Keyboard Shortcuts
 
@@ -43,6 +46,8 @@ Note that the volume buttons do not change the app's volume. It is advised to le
 - **ESCAPE**: Back
 - **ENTER**: Confirm
 - **S**: Toggle settings
+- **F11**: Toggle music maximize
+- **TAB**: Toggle player extra controls
 - **UP**/**KP 8**: Volume up
 - **DOWN**/**KP 2**: Volume down
 - **SPACE**/**ENTER**/**KP ENTER**/**AUDIO PLAY**: Play/pause music
@@ -54,18 +59,22 @@ Note that the volume buttons do not change the app's volume. It is advised to le
 - **CTRL** + **A**: New playlist/Add music
 - **CTRL** + **S**: Save
 - **CTRL** + **H**: Open history
+- **CTRL** + **K**: Open keybindings
 - **CTRL** + **F**: Toggle playlist search
 - **CTRL** + **BACKSPACE**: Erase input field
 - **CTRL** + **C**: Toggle change cover
 - **CTRL** + **E**: End music
 - **CTRL** + **R**: Rewind music
 - **CTRL** + **D**: Toggle miniplayer
+- **CTRL** + **F11**: Toggle music fullscreen
+- **CTRL** + **L**: Minimize window
+- **CTRL** + **M**: Maximize window
 - **PAGE UP**/**KP 9**: Scroll up
 - **PAGE DOWN**/**KP 3**: Scroll down
 
 # Building/Running
 
-On Windows, one can package and run the executable using the `windows_build.py` script (requires `PyInstaller`).
+On Windows, one can package and run the executable using the `build_windows.py` script (requires `PyInstaller`).
 
 It is adviced to run the following commands after configuring a virtual environment.
 Make sure to be in the folder where the main file is located, then:
@@ -90,7 +99,7 @@ There are 2 settings that can only be accessed in the `data/settings.json` file.
 
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)
 - `mili-ui` >= 0.9.6 (UI backend)
-- `moviepy` >= 1.0.3 (MP4 converter, audio reader)
+- `moviepy` >= 1.0.3 (video/audio converter/reader)
 - **[optional]** `pypresence` >= 4.3.0 (Discord presence)
 - **[optional]** `PySDL2` >= 0.9.16 (global mouse state backend)
 

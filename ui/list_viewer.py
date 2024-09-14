@@ -46,6 +46,7 @@ class ListViewerUI(UIComponent):
             {"fillx": True},
         )
 
+        self.mili.id_checkpoint(45)
         with self.mili.begin(
             (0, 0, self.app.window.size[0], 0), {"filly": True}, get_data=True
         ) as scroll_cont:
@@ -53,6 +54,8 @@ class ListViewerUI(UIComponent):
                 self.scroll.update(scroll_cont)
                 self.scrollbar.short_size = self.mult(self.sbar_size)
                 self.scrollbar.update(scroll_cont)
+                self.ui_scrollbar()
+                self.mili.id_checkpoint(50)
 
                 for playlist in self.app.playlists:
                     self.ui_playlist(playlist)
@@ -63,8 +66,6 @@ class ListViewerUI(UIComponent):
                     None,
                     {"offset": self.scroll.get_offset()},
                 )
-
-                self.ui_scrollbar()
 
             else:
                 self.mili.text_element(

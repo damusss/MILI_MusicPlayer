@@ -7,7 +7,7 @@ import moviepy.editor as moviepy
 
 
 def load_cover_async(path, obj):
-    obj.cover = pygame.image.load(path).convert()
+    obj.cover = pygame.image.load(path).convert_alpha()
 
 
 def get_cover_async(music: "MusicData", videofile: moviepy.VideoClip, cover_path):
@@ -24,6 +24,9 @@ def convert_music_async(music: "MusicData", audiofile: moviepy.AudioClip, new_pa
     try:
         audiofile.write_audiofile(str(new_path), verbose=True)
         music.pending = False
+        if music.audio_converting:
+            music.converted = True
+        music.audio_converting = False
     except Exception as e:
         music.load_exc = e
 
@@ -38,17 +41,21 @@ class MusicData:
     duration: int
     playlist: "Playlist"
     pending: bool
+    audio_converting: bool
+    converted: bool
     load_exc = None
 
     @classmethod
-    def load(cls, realpath, playlist: "Playlist", loading_image=None):
+    def load(cls, realpath, playlist: "Playlist", loading_image=None, converted=False):
         self = MusicData()
         self.realpath = realpath
         self.playlist = playlist
         self.cover = None
         self.duration = NotCached
         self.pending = False
+        self.audio_converting = False
         self.load_exc = None
+        self.converted = converted
 
         cover_path = f"data/music_covers/{playlist.name}_{self.realstem}.png"
         if not os.path.exists(realpath):
@@ -63,7 +70,7 @@ class MusicData:
 
         if self.isvideo:
             new_path = pathlib.Path(
-                f"data/mp3_from_mp4/{playlist.name}_{self.realstem}.mp3"
+                f"data/mp3_converted/{playlist.name}_{self.realstem}.mp3"
             ).resolve()
 
             if os.path.exists(new_path) and os.path.exists(cover_path):
@@ -108,19 +115,71 @@ class MusicData:
             )
             thread.start()
             return self
+        elif self.isconvertible:
+            new_path = pathlib.Path(
+                f"data/mp3_converted/{playlist.name}_{self.realstem}.mp3"
+            ).resolve()
 
+            if os.path.exists(cover_path):
+                self.load_cover_async(cover_path, loading_image)
+            if os.path.exists(new_path):
+                self.audiopath = new_path
+                return self
+
+            try:
+                audiofile = moviepy.AudioFileClip(str(realpath))
+                self.audiofile = audiofile
+            except Exception as e:
+                pygame.display.message_box(
+                    "Could not load music",
+                    f"Could not convert and load '{realpath}' to Mp3 due to an external exception: '{e}'",
+                    "error",
+                    None,
+                    ("Understood",),
+                )
+                return
+            self.audiopath = new_path
+            self.pending = True
+            thread = threading.Thread(
+                target=convert_music_async, args=(self, audiofile, new_path)
+            )
+            thread.start()
+            return self
         else:
             if os.path.exists(cover_path):
                 self.load_cover_async(cover_path, loading_image)
-            self.audiopath = realpath
+            if self.converted:
+                self.audiopath = pathlib.Path(
+                    f"data/mp3_converted/{playlist.name}_{self.realstem}.mp3"
+                ).resolve()
+            else:
+                self.audiopath = realpath
             return self
 
     def check(self):
         if not self.pending:
+            if hasattr(self, "audiofile"):
+                self.audiofile.close()
+                del self.audiofile
             if hasattr(self, "videofile"):
                 self.videofile.close()
                 del self.videofile
         if self.load_exc is None:
+            return False
+        if self.audio_converting:
+            self.audio_converting = False
+            self.pending = False
+            self.load_exc = None
+            self.playlist.musictable.pop(self.audiopath)
+            self.audiopath = self.realpath
+            self.playlist.musictable[self.audiopath] = self
+            pygame.display.message_box(
+                "Could not convert music",
+                f"Could not convert '{self.realpath}' to MP3 due to external exception: '{self.load_exc}'.",
+                "error",
+                None,
+                ("Understood",),
+            )
             return False
         pygame.display.message_box(
             "Could not load music",
@@ -165,11 +224,15 @@ class MusicData:
 
     @property
     def isvideo(self):
-        return self.realpath.suffix.lower() == ".mp4"
+        return self.realpath.suffix.lower()[1:] in VIDEO_SUPPORTED
+
+    @property
+    def isconvertible(self):
+        return self.realpath.suffix.lower()[1:] in CONVERT_SUPPORTED
 
     @property
     def pos_supported(self):
-        return self.realpath.suffix.lower()[1:] in POS_SUPPORTED
+        return self.realpath.suffix.lower()[1:] not in POS_UNSUPPORTED
 
 
 class HistoryData:
@@ -235,9 +298,13 @@ class Playlist:
         return [music.realpath for music in self.musiclist]
 
     def load_music(self, path, loading_image=None, idx=-1):
+        converted = False
+        if isinstance(path, list):
+            path = path[0]
+            converted = True
         if path in self.musictable or path in self.realpaths:
             return
-        music_data = MusicData.load(path, self, loading_image)
+        music_data = MusicData.load(path, self, loading_image, converted)
         if music_data is None:
             return
         if idx != -1:

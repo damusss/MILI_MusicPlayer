@@ -61,6 +61,7 @@ class MusicControlsUI(UIComponent):
         self.get_bg_effect()
 
         if self.app.custom_borders.resizing or self.super_fullscreen:
+            self.minip.run()
             return
 
         if self.app.music_paused:
@@ -189,6 +190,7 @@ class MusicControlsUI(UIComponent):
             self.music_auto_finish()
             return
 
+        self.slider.valuex = percentage
         sizeperc = totalw * percentage
         self.mili.line_element(
             [(-totalw / 2, 0), (totalw / 2, 0)],
@@ -225,10 +227,7 @@ class MusicControlsUI(UIComponent):
             self.music_auto_finish()
             return
 
-        if self.handle_percentage is not None:
-            percentage = self.handle_percentage
-
-        sizeperc = totalw * min(1, percentage)
+        sizeperc = totalw * min(1, self.slider.valuex)
         with self.mili.begin(
             pygame.Rect(0, 0, totalw, self.mult(5)).move_to(
                 midbottom=(
@@ -324,9 +323,9 @@ class MusicControlsUI(UIComponent):
                 self.offset_restart_time = pygame.time.get_ticks()
             else:
                 if diff > 0:
-                    if pygame.time.get_ticks() - self.offset_restart_time >= 2000:
-                        self.offset += self.app.delta_time * 35
-                    if self.offset > diff * 1.45:
+                    if pygame.time.get_ticks() - self.offset_restart_time >= 2500:
+                        self.offset += self.app.delta_time * 30
+                    if self.offset > diff + self.app.window.size[0] / 3:
                         self.offset = 0
                         self.offset_restart_time = pygame.time.get_ticks()
                 else:
@@ -394,24 +393,14 @@ class MusicControlsUI(UIComponent):
                     40,
                     1,
                 )
-            self.ui_control_btn(
-                self.back5_image,
-                self.action_backwards_5,
-                40,
-                2,
-            )
+            self.ui_control_btn(self.back5_image, self.action_backwards_5, 40, 2, True)
             self.ui_control_btn(
                 self.play_image if self.app.music_paused else self.pause_image,
                 self.action_play,
                 50,
                 3,
             )
-            self.ui_control_btn(
-                self.skip5_image,
-                self.action_forward_5,
-                40,
-                4,
-            )
+            self.ui_control_btn(self.skip5_image, self.action_forward_5, 40, 4, True)
             if self.app.music_index < len(self.app.music.playlist.musiclist) - 1:
                 self.ui_control_btn(
                     self.skip_next_image,
@@ -421,7 +410,7 @@ class MusicControlsUI(UIComponent):
                 )
 
     def ui_control_btn(self, image, action, size, animi, special=False, dots=False):
-        anim = self.anims[animi]
+        anim: mili.animation.ABAnimation = self.anims[animi]
         if it := self.mili.element(
             (0, 0, self.mult(size), self.mult(size)),
             {"align": "center", "clip_draw": False},
@@ -450,6 +439,8 @@ class MusicControlsUI(UIComponent):
                     anim.goto_b()
             if it.just_unhovered:
                 anim.goto_a()
+            if not it.absolute_hover and not anim.active and anim.value != anim.a:
+                anim.goto_a()
 
     def get_videoclip_cover(self):
         self.music_videoclip_cover = None
@@ -465,10 +456,13 @@ class MusicControlsUI(UIComponent):
             if pos >= self.app.music.duration:
                 self.music_videoclip_cover = SURF
                 return
-            frame = self.app.music_videoclip.get_frame(pos)
-            self.music_videoclip_cover = pygame.image.frombytes(
-                frame.tobytes(), self.app.music_videoclip.size, "RGB"
-            )
+            try:
+                frame = self.app.music_videoclip.get_frame(pos)
+                self.music_videoclip_cover = pygame.image.frombytes(
+                    frame.tobytes(), self.app.music_videoclip.size, "RGB"
+                )
+            except Exception:
+                return
             self.last_videoclip_cover = self.music_videoclip_cover
 
     def get_bg_effect(self):
