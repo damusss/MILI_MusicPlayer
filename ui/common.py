@@ -7,7 +7,7 @@ import typing
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
-DEV_VERSION = 32
+DEV_VERSION = 33
 PREFERRED_SIZES = (415, 700)
 MINIP_PREFERRED_SIZES = 200, 200
 UI_SIZES = (480, 720)
@@ -54,7 +54,7 @@ WIN_MIN_SIZE = (200, 300)
 DISCORD_COOLDOWN = 20000
 BIG_COVER_COOLDOWN = 300
 SAVE_COOLDOWN = 60000 * 2
-RATIO_MIN = 0.5
+RATIO_MIN = 0.52
 BG_CV = 3
 MUSIC_CV = 3, 18, 8
 LIST_CV = MUSIC_CV
@@ -198,7 +198,7 @@ class UIComponent:
     def ui_overlay_btn(
         self, anim: mili.animation.ABAnimation, on_action, image, side="bottom"
     ):
-        size = self.mult(55)
+        size = self.mult(50)
         offset = self.mult(8)
         xoffset = offset * 0.6
         if (
@@ -303,9 +303,10 @@ class UIComponent:
                         color = (80, 0, 0)
             else:
                 color = (cond(self.app, it, *TOPB_CV),) * 3
+            animvalue = 0 if side == "left" else anim.value
             self.mili.rect(
                 {"color": color, "border_radius": 0}
-                | mili.style.same(int(anim.value), "padx", "pady")
+                | mili.style.same(int(animvalue), "padx", "pady")
             )
             self.mili.image(
                 image,

@@ -15,7 +15,7 @@ class MusicControlsUI(UIComponent):
         self.offset_restart_time = pygame.time.get_ticks()
         self.cont_height = 0
         self.small_cont = True
-        self.anims = [animation(-3) for i in range(10)]
+        self.anims = [animation(-3) for i in range(11)]
         self.handle_anim = animation(-10)
         self.slider = mili.Slider(False, True, 30, False)
         self.bigcover_cache = mili.ImageCache()
@@ -52,10 +52,7 @@ class MusicControlsUI(UIComponent):
             and self.app.menu_data == "controls"
             and self.dots_rect is not None
         ):
-            self.app.menu_pos = (
-                self.dots_rect.right,
-                self.dots_rect.centery - self.mult(30),
-            )
+            self.app.menu_pos = self.get_menu_pos(self.app.menu_buttons)
 
         self.get_videoclip_cover()
         self.get_bg_effect()
@@ -491,32 +488,43 @@ class MusicControlsUI(UIComponent):
             self.app.close_menu()
             return
         buttons = [
-            (self.app.reset_image, self.action_rewind, self.anims[6]),
+            (self.app.close_image, self.app.end_music, self.anims[6]),
+            (self.app.reset_image, self.action_rewind, self.anims[7]),
             (
                 self.app.loopon_image
                 if self.app.music_loops
                 else self.app.loopoff_image,
                 self.action_loop,
-                self.anims[7],
-                "15",
+                self.anims[8],
+                "15" if self.app.music_loops else "30",
             ),
         ]
         if self.app.modal_state != "fullscreen":
             buttons.append(
-                (self.fullscreen_image, self.action_fullscreen, self.anims[8], "30")
+                (self.fullscreen_image, self.action_fullscreen, self.anims[9], "30")
             )
         buttons.append(
             (
                 self.minip_image if self.minip.window is None else self.maxip_image,
                 self.action_miniplayer,
-                self.anims[9],
+                self.anims[10],
                 "35",
             )
         )
         self.app.open_menu(
             "controls",
             *buttons,
-            pos=(self.dots_rect.right, self.dots_rect.centery - self.mult(20)),
+            pos=self.get_menu_pos(buttons),
+        )
+
+    def get_menu_pos(self, buttons):
+        return (
+            min(
+                self.dots_rect.right,
+                self.app.window.size[0]
+                - ((self.mult(40) + 3) * len(buttons) + self.mult(7) * 2),
+            ),
+            self.dots_rect.centery - (self.mult(40) / 2 + self.mult(7)),
         )
 
     def action_fullscreen(self):

@@ -67,6 +67,18 @@ class MusicPlayerApp(mili.GenericApp):
         self.window.minimum_size = WIN_MIN_SIZE
         pygame.key.set_repeat(500, 30)
         print(f"MILI {mili.VERSION_STR}")
+        if mili.VERSION < (0, 9, 6) or pygame.vernum < (2, 5, 1):
+            pygame.display.message_box(
+                "Outdated dependencies",
+                "The core dependencies of the music player are outdated, please update them to the latest version. "
+                f"pygame-ce: needed >=2.5.1, found {pygame.ver}. MILI: needed >=0.9.6, found {mili.VERSION_STR}. "
+                "The application will now quit.",
+                "error",
+                None,
+                ("Understood",),
+            )
+            pygame.quit()
+            sys.exit()
 
     def init_attributes(self):
         # components
@@ -128,7 +140,6 @@ class MusicPlayerApp(mili.GenericApp):
         self.music_start_time = None
         # custom title
         self.tbarh = 0
-        self.window_stop_special = False
         self.custom_borders = mili.CustomWindowBorders(
             self.window,
             RESIZE_SIZE,
@@ -138,8 +149,6 @@ class MusicPlayerApp(mili.GenericApp):
             RATIO_MIN,
             on_resize=lambda: (self.make_bg_image(), self.on_resize_move()),
             on_move=self.on_resize_move,
-            on_end_move=self.on_end_move_resize,
-            on_end_resize=self.on_end_move_resize,
         )
 
     def init_load_icons(self):
@@ -484,7 +493,6 @@ class MusicPlayerApp(mili.GenericApp):
         self.stolen_cursor = False
         self.cursor_hover = False
         if self.custom_title and self.can_abs_interact():
-            self.window_stop_special = False
             self.stolen_cursor = self.custom_borders.update()
 
         ratio = self.window.size[0] / self.window.size[1]
@@ -534,10 +542,13 @@ class MusicPlayerApp(mili.GenericApp):
 
         with self.mili.begin(None, {"fillx": True, "filly": True} | mili.PADLESS):
             self.mili.id_checkpoint(20)
-            if self.view_state == "list":
-                self.list_viewer.ui()
-            elif self.view_state == "playlist":
-                self.playlist_viewer.ui()
+            if self.modal_state != "fullscreen":
+                if self.view_state == "list":
+                    self.list_viewer.ui()
+                elif self.view_state == "playlist":
+                    self.playlist_viewer.ui()
+            else:
+                self.mili.element(None, {"filly": True})
 
             if self.modal_state == "settings":
                 self.settings.ui()
@@ -586,6 +597,9 @@ class MusicPlayerApp(mili.GenericApp):
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
         elif not self.stolen_cursor and self.focused:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+        if not self.custom_borders.dragging and not self.custom_borders.resizing:
+            self.custom_borders.cumulative_relative = pygame.Vector2()
 
     def ui_top(self):
         if self.custom_title:
@@ -660,7 +674,7 @@ class MusicPlayerApp(mili.GenericApp):
                     bimage, baction, banim = bdata
                 else:
                     bimage, baction, banim, br = bdata
-                self.prefabs.ui_image_btn(bimage, baction, banim, 45, br)
+                self.prefabs.ui_image_btn(bimage, baction, banim, 40, br)
             if (
                 not menu.absolute_hover
                 and any([btn is True for btn in pygame.mouse.get_pressed()])
@@ -701,11 +715,22 @@ class MusicPlayerApp(mili.GenericApp):
 
     def action_maximize(self):
         if self.maximized:
+            do_drag = pygame.Rect(0, 0, self.window.size[0], 30).collidepoint(
+                pygame.mouse.get_pos()
+            )
             self.window.position = self.before_maximize_data[0]
             self.window.size = self.before_maximize_data[1]
             self.maximized = False
             self.before_maximize_data = None
-            self.custom_borders.dragging = self.custom_borders.resizing = False
+            self.custom_borders.resizing = self.custom_borders.dragging = False
+            if do_drag:
+                self.custom_borders.dragging = True
+                pygame.mouse.set_pos((self.window.size[0] / 2, 15))
+                self.custom_borders._press_rel = pygame.mouse.get_pos()
+                self.custom_borders._press_global = (
+                    pygame.Vector2(pygame.mouse.get_pos()) + self.window.position
+                )
+                self.custom_borders._start_val = pygame.Vector2(self.window.position)
         else:
             self.before_maximize_data = self.window.position, self.window.size
             self.window.position = (0, 0)
@@ -717,10 +742,6 @@ class MusicPlayerApp(mili.GenericApp):
     def action_minimize(self):
         self.window.minimize()
 
-    def on_end_move_resize(self):
-        if self.custom_borders.cumulative_relative.length() != 0:
-            self.window_stop_special = True
-
     def on_resize_move(self):
         if self.maximized and self.custom_borders.relative.length() != 0:
             self.action_maximize()
@@ -730,7 +751,7 @@ class MusicPlayerApp(mili.GenericApp):
             self.can_abs_interact()
             and not self.custom_borders.resizing
             and not self.custom_borders.dragging
-            and not self.window_stop_special
+            and self.custom_borders.cumulative_relative.length() == 0
         )
 
     def can_abs_interact(self):

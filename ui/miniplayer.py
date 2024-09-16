@@ -24,15 +24,12 @@ class MiniplayerUI:
         self.click_event = False
         self.start_time = pygame.time.get_ticks()
         self.mouse_data = []
-        self.window_stop_special = False
         self.custom_borders = mili.CustomWindowBorders(
             self.window,
             RESIZE_SIZE,
             RESIZE_SIZE * 2,
             0,
             True,
-            on_end_move=self.on_end_move_resize,
-            on_end_resize=self.on_end_move_resize,
         )
 
         self.mili.default_styles(
@@ -89,16 +86,12 @@ class MiniplayerUI:
         self.window = None
         self.focused = False
 
-    def on_end_move_resize(self):
-        if self.custom_borders.cumulative_relative.length() != 0:
-            self.window_stop_special = True
-
     def can_interact(self):
         return (
             self.can_abs_interact()
             and not self.custom_borders.resizing
             and not self.custom_borders.dragging
-            and not self.window_stop_special
+            and self.custom_borders.cumulative_relative.length() == 0
         )
 
     def can_abs_interact(self):
@@ -167,7 +160,6 @@ class MiniplayerUI:
     def ui(self):
         self.get_hovered()
         self.custom_borders.titlebar_height = self.window.size[1]
-        self.window_stop_special = False
         if self.window.borderless:
             if self.can_abs_interact():
                 self.custom_borders.update()
@@ -198,6 +190,9 @@ class MiniplayerUI:
                 self.action_toggle_border,
             )
             self.ui_top_btn(self.app.close_image, "right", self.close)
+
+        if not self.custom_borders.dragging and not self.custom_borders.resizing:
+            self.custom_borders.cumulative_relative = pygame.Vector2()
 
     def ui_line(self):
         totalw = self.window.size[0] - self.mult(8)
