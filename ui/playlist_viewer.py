@@ -7,12 +7,14 @@ import subprocess
 from ui.common import *
 import moviepy.editor as moviepy
 from ui.data import convert_music_async
-from ui.data import Playlist, MusicData
-from ui.add_music import AddMusicUI
+from ui.data import Playlist, MusicData, PlaylistGroup
+from ui.playlist_add import PlaylistAddUI
 from ui.entryline import UIEntryline
 from ui.move_music import MoveMusicUI
+from ui.add_to_group import AddToGroupUI
 from ui.change_cover import ChangeCoverUI
 from ui.rename_music import RenameMusicUI
+from ui.rename_group import RenameGroupUI
 
 
 class PlaylistViewerUI(UIComponent):
@@ -22,18 +24,20 @@ class PlaylistViewerUI(UIComponent):
         self.anim_cover = animation(-5)
         self.anim_back = animation(-3)
         self.anim_search = animation(-5)
-        self.menu_anims = [animation(-4) for i in range(5)]
+        self.menu_anims = [animation(-4) for i in range(8)]
         self.modal_state = "none"
-        self.middle_selected = None
+        self.middle_selected: MusicData | PlaylistGroup = None
         self.search_active = False
         self.search_entryline = UIEntryline("Enter search...", False)
         self.big_cover = False
         self.big_cover_time = 0
 
-        self.add_music = AddMusicUI(self.app)
+        self.playlist_add = PlaylistAddUI(self.app)
         self.change_cover = ChangeCoverUI(self.app)
         self.rename_music = RenameMusicUI(self.app)
+        self.rename_group = RenameGroupUI(self.app)
         self.move_music = MoveMusicUI(self.app)
+        self.add_to_group = AddToGroupUI(self.app)
 
         self.scroll = mili.Scroll()
         self.scrollbar = mili.Scrollbar(self.scroll, 8, 3, 3, 0, "y")
@@ -48,14 +52,15 @@ class PlaylistViewerUI(UIComponent):
         self.searchoff_image = load_icon("searchoff")
         self.backspace_image = load_icon("backspace")
         self.convert_image = load_icon("convert")
+        self.up_image = load_icon("up")
+        self.down_image = load_icon("down")
+        self.remove_image = load_icon("playlist_remove")
 
     def sort_searched_songs(self):
         scores = {}
         rawsearch = self.search_entryline.text.strip()
         search = rawsearch.lower()
-        for i, apath in enumerate(
-            [music.audiopath for music in self.playlist.musiclist]
-        ):
+        for apath in [music.audiopath for music in self.playlist.musiclist]:
             path = self.playlist.musictable[apath].realpath
             score = 0
             rawname = str(path.stem)
@@ -72,10 +77,9 @@ class PlaylistViewerUI(UIComponent):
                     score += 10
                 if rawword.lower() in name.replace(" ", ""):
                     score += 5
-            scores[apath] = (score, i)
+            scores[apath] = score
         return [
-            (v[1][1], v[0])
-            for v in sorted(list(scores.items()), key=lambda x: x[1][0], reverse=True)
+            v[0] for v in sorted(list(scores.items()), key=lambda x: x[1], reverse=True)
         ]
 
     def enter(self, playlist):
@@ -87,7 +91,23 @@ class PlaylistViewerUI(UIComponent):
             return
         self.ui_overlay_top_btn(self.anim_back, self.back, self.app.back_image, "left")
 
+    def ui_check(self):
+        if self.app.modal_state != "none" and self.modal_state != "none":
+            if self.modal_state == "add":
+                self.playlist_add.close()
+            elif self.modal_state == "move":
+                self.move_music.close()
+            elif self.modal_state == "add_group":
+                self.add_to_group.close()
+            elif self.modal_state == "cover":
+                self.change_cover.close()
+            elif self.modal_state == "rename":
+                self.rename_music.close()
+            elif self.modal_state == "rename_group":
+                self.rename_group.close()
+
     def ui(self):
+        self.ui_check()
         if self.modal_state == "none" and self.app.modal_state == "none":
             handle_arrow_scroll(self.app, self.scroll, self.scrollbar)
 
@@ -122,13 +142,17 @@ class PlaylistViewerUI(UIComponent):
                 "megatop",
             )
         elif self.modal_state == "add":
-            self.add_music.ui()
+            self.playlist_add.ui()
         elif self.modal_state == "move":
             self.move_music.ui()
+        elif self.modal_state == "add_group":
+            self.add_to_group.ui()
         elif self.modal_state == "cover":
             self.change_cover.ui()
         elif self.modal_state == "rename":
             self.rename_music.ui()
+        elif self.modal_state == "rename_group":
+            self.rename_group.ui()
 
         if (
             big_cover
@@ -140,13 +164,10 @@ class PlaylistViewerUI(UIComponent):
         with self.mili.begin(
             (0, 0, self.app.window.size[0], 0), {"filly": True}, get_data=True
         ) as scroll_cont:
-            any_pending = any(music.pending for music in self.playlist.musiclist)
             if self.search_active:
                 paths = self.sort_searched_songs()
             else:
-                paths = list(
-                    enumerate([music.audiopath for music in self.playlist.musiclist])
-                )
+                paths = self.playlist.get_group_sorted_musics(paths=True)
             if len(paths) > 0:
                 self.scroll.update(scroll_cont)
                 self.scrollbar.short_size = self.mult(self.sbar_size)
@@ -154,33 +175,33 @@ class PlaylistViewerUI(UIComponent):
 
                 self.ui_scrollbar()
                 self.mili.id_checkpoint(50)
+                done_groups = []
+                last_group = None
 
-                drawn_musics = 0
-                for posi, (musici, path) in enumerate(paths):
-                    drawn_musics += 1
+                for group in self.playlist.groups:
+                    if len(group.musics) <= 0:
+                        self.ui_group(group, empty=True)
+
+                for path in paths:
                     music = self.playlist.musictable[path]
                     if music.check():
                         continue
+                    if last_group is not None and music.group != last_group:
+                        self.ui_group_line()
+                        last_group = None
+                    if not self.search_active:
+                        if music.group is not None:
+                            if music.group not in done_groups:
+                                self.ui_group(music.group)
+                                last_group = music.group
+                                done_groups.append(music.group)
+                            if music.group.collapsed:
+                                last_group = None
+                                continue
                     if music.pending:
-                        self.mili.text_element(
-                            f"'{parse_music_stem(self.app, music.realstem)}' is being converted...",
-                            {
-                                "size": self.mult(16),
-                                "color": (170,) * 3,
-                                "growx": False,
-                                "slow_grow": True,
-                                "wraplen": self.app.window.size[0] * 0.95,
-                            },
-                            None,
-                            {"offset": self.scroll.get_offset(), "fillx": True},
-                        )
+                        self.ui_pending(music)
                         continue
-                    if self.ui_music(music, musici, posi) and not any_pending:
-                        break
-
-                if drawn_musics < len(paths) and not any_pending:
-                    to_draw = len(paths) - drawn_musics
-                    self.mili.element((0, 0, 10, (self.mult(80) + 3) * to_draw))
+                    self.ui_music(music)
 
                 self.mili.text_element(
                     f"{len(self.playlist.musiclist)} track{
@@ -192,13 +213,151 @@ class PlaylistViewerUI(UIComponent):
 
             else:
                 self.mili.text_element(
-                    "No music matches your search"
+                    "No track matches your search"
                     if self.search_active
-                    else "No music",
+                    else "No tracks",
                     {"size": self.mult(20), "color": (200,) * 3},
                     None,
                     {"align": "center"},
                 )
+
+    def ui_group(self, group: PlaylistGroup, empty=False):
+        with self.mili.begin(
+            None,
+            {
+                "fillx": "100" if not self.scrollbar.needed else "98",
+                "offset": (
+                    self.scrollbar.needed * -self.mult(self.sbar_size / 2),
+                    self.scroll.get_offset()[1],
+                ),
+                "padx": self.mult(2),
+                "axis": "x",
+                "align": "center",
+                "anchor": "center",
+                "resizey": {
+                    "min": self.mult(45),
+                },
+                "spacing": -self.mult(3),
+            },
+        ) as cont:
+            self.ui_group_bg(group, empty, cont)
+            if empty:
+                self.mili.element((0, 0, self.mult(35), 0))
+            else:
+                self.mili.image_element(
+                    (
+                        self.app.playbars_image
+                        if self.app.music is not None and self.app.music.group is group
+                        else self.down_image
+                    )
+                    if group.collapsed
+                    else self.up_image,
+                    {
+                        "cache": mili.ImageCache.get_next_cache(),
+                        "padx": self.mult(5)
+                        if (
+                            self.app.music is not None
+                            and self.app.music.group is group
+                            and group.collapsed
+                        )
+                        else 0,
+                    },
+                    (0, 0, self.mult(35), self.mult(35)),
+                    {"blocking": False, "align": "center"},
+                )
+            self.mili.text_element(
+                f"{group.name}{" (empty)" if empty else ""}",
+                {
+                    "size": self.mult(20),
+                    "growx": False,
+                    "growy": True,
+                    "slow_grow": True,
+                    "wraplen": "100",
+                    "font_align": pygame.FONT_LEFT,
+                    "align": "left",
+                },
+                (
+                    0,
+                    0,
+                    self.app.window.size[0] / 1.01 - self.mult(50),
+                    0,
+                ),
+                {"align": "center", "blocking": False},
+            )
+            if self.app.can_interact():
+                if (cont.hovered or cont.unhover_pressed) and not empty:
+                    self.app.cursor_hover = True
+                if not empty and cont.just_pressed_button == pygame.BUTTON_MIDDLE:
+                    self.middle_selected = group
+                elif cont.just_released_button == pygame.BUTTON_RIGHT:
+                    self.app.open_menu(
+                        group,
+                        (
+                            self.app.rename_image,
+                            self.action_rename_group,
+                            self.menu_anims[-2],
+                        ),
+                        (
+                            self.app.delete_image,
+                            self.action_delete_group,
+                            self.menu_anims[-1],
+                        ),
+                    )
+                elif cont.left_just_released and not empty:
+                    group.collapsed = not group.collapsed
+
+    def ui_group_bg(self, group, empty, cont):
+        color = (
+            GROUP_CV[0]
+            if empty
+            else (
+                GROUP_CV[1]
+                if group is self.middle_selected
+                else cond(self.app, cont, *GROUP_CV)
+            ),
+        ) * 3
+        if self.app.bg_effect:
+            self.mili.image(
+                SURF,
+                {
+                    "fill": True,
+                    "fill_color": (
+                        *(color),
+                        ALPHA,
+                    ),
+                    "border_radius": "5",
+                    "cache": mili.ImageCache.get_next_cache(),
+                },
+            )
+        else:
+            self.mili.rect(
+                {
+                    "color": color,
+                    "border_radius": "5",
+                }
+            )
+
+    def ui_group_line(self):
+        self.mili.line_element(
+            [(-self.app.window.size[0] / 2 + self.mult(45), 0), ("49.5", 0)],
+            {"size": 1, "color": (80,) * 3},
+            (0, 0, 0, self.mult(7)),
+            {"fillx": True, "offset": self.scroll.get_offset()},
+        )
+
+    def ui_pending(self, music: MusicData):
+        self.mili.text_element(
+            f"'{parse_music_stem(self.app, music.realstem)}' is being converted...",
+            {
+                "size": self.mult(16),
+                "color": (170,) * 3,
+                "growx": False,
+                "slow_grow": True,
+                "wraplen": self.app.window.size[0] * 0.95,
+            },
+            None,
+            {"offset": self.scroll.get_offset(), "fillx": True},
+        )
 
     def ui_scrollbar(self):
         if self.scrollbar.needed:
@@ -219,7 +378,9 @@ class PlaylistViewerUI(UIComponent):
     def ui_title(self):
         ret = False
         with self.mili.begin(None, mili.RESIZE | mili.PADLESS | mili.CENTER):
+            coversize = 0
             if self.playlist.cover is not None:
+                coversize = self.mult(80)
                 with self.mili.begin(
                     (0, 0, 0, 0),
                     {"resizex": True, "resizey": True, "align": "center", "axis": "x"},
@@ -227,7 +388,7 @@ class PlaylistViewerUI(UIComponent):
                     it = self.mili.image_element(
                         self.playlist.cover,
                         {"cache": self.cover_cache, "smoothscale": True},
-                        (0, 0, self.mult(80), self.mult(80)),
+                        (0, 0, coversize, coversize),
                         {"align": "center"},
                     )
                     if (
@@ -238,9 +399,9 @@ class PlaylistViewerUI(UIComponent):
                     ):
                         ret = True
                         self.app.cursor_hover = True
-                    self.ui_title_txt()
+                    self.ui_title_txt(coversize)
             else:
-                self.ui_title_txt()
+                self.ui_title_txt(coversize)
             if self.search_active:
                 self.ui_search()
         self.mili.line_element(
@@ -307,20 +468,34 @@ class PlaylistViewerUI(UIComponent):
             },
         )
 
-    def ui_title_txt(self):
-        self.mili.text_element(
-            f"{self.playlist.name}",
-            {"size": self.mult(32)},
-            None,
-            {"align": "center"},
-        )
+    def ui_title_txt(self, coversize):
+        w = self.mili.text_size(self.playlist.name, {"size": self.mult(32)}).x
+        if w >= self.app.window.size[0] / 1.08 - coversize:
+            self.mili.text_element(
+                self.playlist.name,
+                {
+                    "size": self.mult(32),
+                    "slow_grow": True,
+                    "wraplen": self.app.window.size[0] / 1.08 - coversize,
+                    "align": "left",
+                },
+                None,
+                {"align": "center"},
+            )
+        else:
+            self.mili.text_element(
+                self.playlist.name,
+                {
+                    "size": self.mult(32),
+                    "align": "left",
+                },
+                None,
+                {"align": "center"},
+            )
 
-    def ui_music(self, music: MusicData, idx, posi):
-        predicted_pos = posi * (self.mult(80) + 3) + self.scroll.get_offset()[1]
-        if predicted_pos > self.app.window.size[1]:
-            return True
+    def ui_music(self, music: MusicData):
         with self.mili.begin(
-            (0, 0, 0, self.mult(80)),
+            None,
             {
                 "fillx": "100" if not self.scrollbar.needed else "98",
                 "offset": (
@@ -331,90 +506,136 @@ class PlaylistViewerUI(UIComponent):
                 "axis": "x",
                 "align": "center",
                 "anchor": "first",
+                "resizey": {"min": self.mult(80)},
             },
+            get_data=True,
         ) as cont:
-            self.ui_music_bg(music.audiopath, cont)
-            imagesize = 0
-            cover = music.cover_or(self.app.music_cover_image)
-            if cover is None:
-                cover = self.app.music_cover_image
-            if cover is not None:
-                imagesize = self.mult(70)
-                self.mili.image_element(
-                    cover,
-                    {"cache": mili.ImageCache.get_next_cache(), "smoothscale": True},
-                    (0, 0, imagesize, imagesize),
-                    {"align": "center", "blocking": False},
+            if cont.absolute_rect.colliderect(((0, 0), self.app.window.size)):
+                self.ui_music_bg(cont, music)
+                imagesize = padsize = 0
+                if (
+                    music.group is not None and not self.search_active
+                ) or music is self.app.music:
+                    padsize = self.mult(30)
+                    self.mili.element(
+                        (0, 0, padsize, 0), {"filly": True, "blocking": False}
+                    )
+                    if music is self.app.music:
+                        self.mili.image(
+                            self.app.playbars_image,
+                            {"cache": mili.ImageCache.get_next_cache()},
+                        )
+                cover = music.cover_or(self.app.music_cover_image)
+                if cover is None:
+                    cover = self.app.music_cover_image
+                if (
+                    music is self.app.music
+                    and self.app.music_controls.music_videoclip_cover is not None
+                ):
+                    cover = self.app.music_controls.music_videoclip_cover
+                if cover is not None:
+                    imagesize = self.mult(70)
+                    self.mili.image_element(
+                        cover,
+                        {
+                            "cache": mili.ImageCache.get_next_cache(),
+                            "smoothscale": True,
+                        },
+                        (0, 0, imagesize, imagesize),
+                        {"align": "center", "blocking": False},
+                    )
+                self.mili.text_element(
+                    parse_music_stem(self.app, music.realstem),
+                    {
+                        "size": self.mult(18),
+                        "growx": False,
+                        "growy": True,
+                        "slow_grow": True,
+                        "wraplen": "100",
+                        "font_align": pygame.FONT_LEFT,
+                        "align": "topleft",
+                    },
+                    (
+                        0,
+                        0,
+                        self.app.window.size[0] / 1.1 - imagesize - padsize,
+                        self.mult(80) / 1.1,
+                    ),
+                    {"align": "first", "blocking": False},
                 )
-            self.mili.text_element(
-                parse_music_stem(self.app, music.realstem),
-                {
-                    "size": self.mult(18),
-                    "growx": False,
-                    "growy": False,
-                    "wraplen": self.app.window.size[0] / 1.1 - imagesize,
-                    "font_align": pygame.FONT_LEFT,
-                    "align": "topleft",
-                },
-                (0, 0, self.app.window.size[0] / 1.1 - imagesize, self.mult(80) / 1.1),
-                {"align": "first", "blocking": False},
-            )
-            if self.app.can_interact():
-                if cont.hovered or cont.unhover_pressed:
-                    self.app.cursor_hover = True
-                if cont.left_just_released:
-                    self.action_start_playing(music, idx)
-                elif cont.just_released_button == pygame.BUTTON_RIGHT:
-                    self.open_menu(music)
-                elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
-                    self.middle_selected = music
-        return False
+                if self.app.can_interact():
+                    if cont.hovered or cont.unhover_pressed:
+                        self.app.cursor_hover = True
+                    if cont.left_just_released:
+                        self.action_start_playing(music)
+                    elif cont.just_released_button == pygame.BUTTON_RIGHT:
+                        self.open_menu(music)
+                    elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
+                        self.middle_selected = music
+            else:
+                self.mili.element((0, 0, 0, self.mult(70)))
 
-    def ui_music_bg(self, path, cont):
+    def ui_music_bg(self, cont, music):
+        forcehover = (
+            self.app.music == music
+            or (self.app.menu_data == music and self.app.menu_open)
+            or self.middle_selected == music
+        )
+        color = MUSIC_CV[1] if forcehover else cond(self.app, cont, *MUSIC_CV)
         if self.app.bg_effect:
             self.mili.image(
                 SURF,
                 {
                     "fill": True,
                     "fill_color": (
-                        *(
-                            (
-                                MUSIC_CV[1]
-                                if self.app.music == path
-                                else cond(self.app, cont, *MUSIC_CV),
-                            )
-                            * 3
-                        ),
+                        *((color,) * 3),
                         ALPHA,
                     ),
                     "border_radius": 0,
                     "cache": mili.ImageCache.get_next_cache(),
                 },
             )
+
         else:
             self.mili.rect(
                 {
-                    "color": (
-                        MUSIC_CV[1]
-                        if self.app.music == path
-                        else cond(self.app, cont, *MUSIC_CV),
-                    )
-                    * 3,
+                    "color": (color,) * 3,
                     "border_radius": 0,
                 }
+            )
+        if forcehover:
+            self.mili.rect(
+                {"color": (MUSIC_CV[1] + 15,) * 3, "border_radius": 0, "outline": 1}
             )
 
     def open_menu(self, music: MusicData):
         buttons = [
-            (self.app.rename_image, self.action_rename, self.menu_anims[0]),
-            (self.forward_image, self.action_forward, self.menu_anims[1]),
+            (self.app.rename_image, self.action_rename, self.menu_anims[1]),
+            (self.forward_image, self.action_forward, self.menu_anims[2]),
             (
                 self.app.music_controls.minip_image,
                 self.action_show_in_explorer,
-                self.menu_anims[2],
+                self.menu_anims[3],
                 "30",
             ),
         ]
+        if len(self.playlist.groups) > 0:
+            buttons.insert(
+                0,
+                (
+                    (
+                        self.app.playlistadd_image
+                        if music.group is None
+                        else self.remove_image
+                    ),
+                    (
+                        self.action_add_to_group
+                        if music.group is None
+                        else self.action_remove_from_group
+                    ),
+                    self.menu_anims[0],
+                ),
+            )
         if (
             music.realpath.suffix != ".mp3"
             and not music.isvideo
@@ -422,12 +643,25 @@ class PlaylistViewerUI(UIComponent):
             and not music.isconvertible
         ):
             buttons.append(
-                (self.convert_image, self.action_convert, self.menu_anims[3], "30")
+                (self.convert_image, self.action_convert, self.menu_anims[4], "30")
             )
         buttons.append(
-            (self.app.delete_image, self.action_delete, self.menu_anims[4]),
+            (self.app.delete_image, self.action_delete, self.menu_anims[5]),
         )
         self.app.open_menu(music, *buttons)
+
+    def action_add_to_group(self):
+        self.modal_state = "add_group"
+        self.add_to_group.music = self.app.menu_data
+        self.app.close_menu()
+
+    def action_remove_from_group(self):
+        self.app.menu_data.group.remove(self.app.menu_data)
+        if self.app.menu_data is self.app.music:
+            self.app.music_index = self.playlist.get_group_sorted_musics().index(
+                self.app.menu_data
+            )
+        self.app.close_menu()
 
     def action_convert(self):
         btn = pygame.display.message_box(
@@ -446,6 +680,12 @@ class PlaylistViewerUI(UIComponent):
         new_path = pathlib.Path(
             f"data/mp3_converted/{self.playlist.name}_{music.realstem}.mp3"
         ).resolve()
+        if os.path.exists(new_path):
+            self.app.close_menu()
+            if music is self.app.music:
+                self.app.end_music()
+            music.converted = True
+            return
 
         try:
             audiofile = moviepy.AudioFileClip(str(music.realpath))
@@ -459,6 +699,7 @@ class PlaylistViewerUI(UIComponent):
             )
             return
 
+        self.app.close_menu()
         if music is self.app.music:
             self.app.end_music()
 
@@ -482,6 +723,7 @@ class PlaylistViewerUI(UIComponent):
 
     def action_cover(self):
         self.modal_state = "cover"
+        self.change_cover.selected_image = self.playlist.cover
 
     def action_add_music(self):
         self.modal_state = "add"
@@ -490,18 +732,19 @@ class PlaylistViewerUI(UIComponent):
         self.app.change_state("list")
         self.scroll.set_scroll(0, 0)
         self.scrollbar.scroll_moved()
-        if self.modal_state == "move":
-            self.move_music.close()
-        elif self.modal_state == "cover":
-            self.change_cover.close()
-        elif self.modal_state == "add":
-            self.add_music.close()
 
     def action_rename(self):
         self.modal_state = "rename"
         self.rename_music.music = self.app.menu_data
         self.rename_music.entryline.text = self.rename_music.music.realstem
         self.rename_music.entryline.cursor = len(self.rename_music.entryline.text)
+        self.app.close_menu()
+
+    def action_rename_group(self):
+        self.modal_state = "rename_group"
+        self.rename_group.group = self.app.menu_data
+        self.rename_group.entryline.text = self.rename_group.group.name
+        self.rename_group.entryline.cursor = len(self.rename_group.group.name)
         self.app.close_menu()
 
     def action_forward(self):
@@ -536,12 +779,14 @@ class PlaylistViewerUI(UIComponent):
     def action_delete(self):
         btn = pygame.display.message_box(
             "Confirm deletion",
-            "Are you sure you want to remove the music? The song won't be deleted from disk. This action cannot be undone.",
+            "Are you sure you want to remove the music? The track won't be deleted from disk. This action cannot be undone. "
+            "If you proceed and delete the conversion, eventual MP3 generated files will be deleted aswell. "
+            "Not deleting the conversion will make adding the track back faster.",
             "warn",
             None,
-            ("Proceed", "Cancel"),
+            ("Proceed", "Proceed & Delete Conversion", "Cancel"),
         )
-        if btn == 1:
+        if btn == 2:
             self.app.close_menu()
             return
         try:
@@ -549,27 +794,181 @@ class PlaylistViewerUI(UIComponent):
                 self.app.end_music()
             path = self.app.menu_data.audiopath
             self.playlist.remove(path)
+            if btn == 1:
+                mp3_path = f"data/mp3_converted/{self.playlist.name}_{self.app.menu_data.realstem}.mp3"
+                if os.path.exists(mp3_path):
+                    os.remove(mp3_path)
         except Exception:
             pass
         self.app.close_menu()
 
-    def action_start_playing(self, music, idx):
-        self.app.play_music(music, idx)
+    def action_delete_group(self):
+        if len(self.app.menu_data.musics) > 0:
+            btn = pygame.display.message_box(
+                "Confirm deletion",
+                "Are you sure you want to delete the group? The tracks inside will be added back to the playlist. This action cannot be undone.",
+                "warn",
+                None,
+                ("Proceed", "Cancel"),
+            )
+            if btn == 1:
+                self.app.close_menu()
+                return
+        musictochangeindex = None
+        for music in self.app.menu_data.musics.copy():
+            self.app.menu_data.remove(music)
+            if music is self.app.music:
+                musictochangeindex = music
+        if musictochangeindex is not None:
+            self.app.music_index = self.playlist.get_group_sorted_musics().index(
+                musictochangeindex
+            )
+        self.playlist.groups.remove(self.app.menu_data)
+        self.app.close_menu()
+
+    def action_start_playing(self, music: MusicData):
+        self.app.play_music(
+            music, music.playlist.get_group_sorted_musics().index(music)
+        )
 
     def stop_searching(self):
         self.search_active = False
         self.search_entryline.text = ""
 
+    def set_scroll_to_music(self, increase=False, incdir=1):
+        if self.app.music.group is not None:
+            self.app.music.group.collapsed = False
+        if increase:
+            self.scroll.scroll(0, (self.mult(80) + 6) * incdir)
+            self.scrollbar.scroll_moved()
+            return
+        remove_amount = 0
+        group_amount = 0
+        line_amount = 0
+        for group in self.app.music.playlist.groups:
+            if len(group.musics) <= 0:
+                group_amount += 1
+            else:
+                if group.idx <= self.app.music_index or group is self.app.music.group:
+                    group_amount += 1
+                    if group.collapsed:
+                        remove_amount += len(group.musics)
+                    elif group.idx < self.app.music_index:
+                        line_amount += 1
+        self.scroll.set_scroll(
+            0,
+            (
+                ((self.app.music_index - 1) * (self.mult(80) + 3))
+                - (remove_amount * (self.mult(80) + 3))
+                + (group_amount * (self.mult(45) + 3))
+                + (line_amount * (self.mult(7) + 3))
+            ),
+        )
+        self.scrollbar.scroll_moved()
+
+    def reorder_musics_groups(self, event):
+        mult = 1
+        if pygame.key.get_pressed()[pygame.K_LSHIFT]:
+            mult = 5
+        inc = -int(event.y) * mult
+        if isinstance(self.middle_selected, MusicData):
+            if self.middle_selected.group is None:
+                self.reorder_music_nogroup(inc)
+            else:
+                self.reorder_music_group(inc)
+
+            if self.middle_selected is self.app.music:
+                self.app.music_index = self.playlist.get_group_sorted_musics().index(
+                    self.middle_selected
+                )
+        else:
+            self.reorder_group(inc)
+
+    def reorder_group(self, inc):
+        sel_group = self.middle_selected  # get the list of sorted musics and groups
+        ref_list = self.playlist.get_group_sorted_musics(groups=True)
+
+        idx = ref_list.index(
+            sel_group
+        )  # get the current group index in that list and change it
+        old_idxs = {grp: i for i, grp in enumerate(ref_list)}
+        new_idx = pygame.math.clamp(idx + inc, 0, len(self.playlist.musiclist) - 1)
+        if new_idx == idx:
+            return
+
+        ref_list.remove(sel_group)
+        ref_list.insert(new_idx, sel_group)  # move the group to that index
+
+        for group in sel_group.playlist.groups:  # move the index of each group to the delta that was created while moving sel_group around
+            group.idx += ref_list.index(group) - old_idxs[group]
+
+        for music in (
+            sel_group.musics
+        ):  # if any music inside the group was playing, reset its index
+            if music is self.app.music:
+                self.app.music_index = self.playlist.get_group_sorted_musics().index(
+                    music
+                )
+                break
+
+    def reorder_music_nogroup(self, inc):
+        music = self.middle_selected  # get the list of sorted musics and groups
+        ref_list = self.playlist.get_group_sorted_musics(groups=True)
+
+        r_idx = self.playlist.musiclist.index(
+            music
+        )  # remember the old index in the music list
+        idx = ref_list.index(
+            music
+        )  # this is the index in the sorted music and group list
+        new_idx = pygame.math.clamp(idx + inc, 0, len(ref_list) - 1)
+        r_newidx = r_idx + inc  # change both indexes
+        if new_idx == idx:
+            return
+
+        ref_list.remove(music)  # move the music in the sorted list
+        ref_list.insert(new_idx, music)
+        changed = False
+
+        for group in self.playlist.groups:  # for each group, check if it moved around while the music was moving, in that case modify its index
+            if len(group.musics) <= 0:
+                continue
+            prev = group.idx
+            group.idx = ref_list.index(group)
+            if prev != group.idx:
+                changed = True
+                break
+
+        if not changed:
+            self.playlist.musiclist.remove(
+                music
+            )  # if no group moved modify its index in the original list
+            self.playlist.musiclist.insert(r_newidx, music)
+
+    def reorder_music_group(self, inc):
+        music = self.middle_selected
+        idx = music.group.musics.index(music)
+        new_idx = pygame.math.clamp(idx + inc, 0, len(music.group.musics) - 1)
+        if new_idx == idx:
+            return
+
+        music.group.musics.remove(music)
+        music.group.musics.insert(new_idx, music)
+
     def event(self, event):
         modal_exit = False
         if self.modal_state == "add":
-            modal_exit = self.add_music.event(event)
+            modal_exit = self.playlist_add.event(event)
         elif self.modal_state == "move":
             modal_exit = self.move_music.event(event)
+        elif self.modal_state == "add_group":
+            modal_exit = self.add_to_group.event(event)
         elif self.modal_state == "cover":
             modal_exit = self.change_cover.event(event)
         elif self.modal_state == "rename":
             modal_exit = self.rename_music.event(event)
+        elif self.modal_state == "rename_group":
+            modal_exit = self.rename_group.event(event)
         if (
             self.search_active
             and self.app.can_interact()
@@ -584,20 +983,7 @@ class PlaylistViewerUI(UIComponent):
             and self.app.modal_state == "none"
         ):
             if self.middle_selected is not None:
-                idx = self.playlist.musiclist.index(self.middle_selected)
-                mult = 1
-                if pygame.key.get_pressed()[pygame.K_LSHIFT]:
-                    mult = 5
-                inc = -int(event.y) * mult
-                new_idx = idx + inc
-                if new_idx < 0:
-                    new_idx = 0
-                if new_idx >= len(self.playlist.musiclist):
-                    new_idx = len(self.playlist.musiclist) - 1
-                self.playlist.musiclist.remove(self.middle_selected)
-                self.playlist.musiclist.insert(new_idx, self.middle_selected)
-                if self.middle_selected is self.app.music:
-                    self.app.music_index = new_idx
+                self.reorder_musics_groups(event)
             else:
                 handle_wheel_scroll(event, self.app, self.scroll, self.scrollbar)
 

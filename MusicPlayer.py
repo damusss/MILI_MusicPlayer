@@ -67,11 +67,11 @@ class MusicPlayerApp(mili.GenericApp):
         self.window.minimum_size = WIN_MIN_SIZE
         pygame.key.set_repeat(500, 30)
         print(f"MILI {mili.VERSION_STR}")
-        if mili.VERSION < (0, 9, 6) or pygame.vernum < (2, 5, 1):
+        if mili.VERSION < (0, 9, 7) or pygame.vernum < (2, 5, 1):
             pygame.display.message_box(
                 "Outdated dependencies",
                 "The core dependencies of the music player are outdated, please update them to the latest version. "
-                f"pygame-ce: needed >=2.5.1, found {pygame.ver}. MILI: needed >=0.9.6, found {mili.VERSION_STR}. "
+                f"pygame-ce: needed >=2.5.1, found {pygame.ver}. MILI: needed >=0.9.7, found {mili.VERSION_STR}. "
                 "The application will now quit.",
                 "error",
                 None,
@@ -168,6 +168,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.maximize_image = load_icon("maximize")
         self.resize_image = load_icon("resize")
         self.reset_image = load_icon("reset")
+        self.playbars_image = load_icon("playbars")
         self.window.set_icon(self.playlist_cover)
 
     def init_load_data(self):
@@ -187,7 +188,9 @@ class MusicPlayerApp(mili.GenericApp):
                 else [pathlib.Path(path[0]), path[1]]
                 for path in pdata["paths"]
             ]
-            self.playlists.append(Playlist(name, paths, self.loading_image))
+            self.playlists.append(
+                Playlist(name, paths, pdata.get("groups", []), self.loading_image)
+            )
 
         for hdata in history_data:
             obj = HistoryData.load_from_data(hdata, self)
@@ -219,7 +222,12 @@ class MusicPlayerApp(mili.GenericApp):
         )
         minimum_caches = (
             (
-                sum([len(playlist.musiclist) for playlist in self.playlists])
+                sum(
+                    [
+                        len(playlist.musiclist) + len(playlist.groups)
+                        for playlist in self.playlists
+                    ]
+                )
                 + len(self.playlists)
             )
             * 3
@@ -438,6 +446,7 @@ class MusicPlayerApp(mili.GenericApp):
                     [str(m.realpath), "converted"] if m.converted else str(m.realpath)
                     for m in p.musiclist
                 ],
+                "groups": [group.get_save_data() for group in p.groups],
             }
             for p in self.playlists
         ]
@@ -548,6 +557,10 @@ class MusicPlayerApp(mili.GenericApp):
                 elif self.view_state == "playlist":
                     self.playlist_viewer.ui()
             else:
+                if self.view_state == "list":
+                    self.list_viewer.ui_check()
+                elif self.view_state == "playlist":
+                    self.playlist_viewer.ui_check()
                 self.mili.element(None, {"filly": True})
 
             if self.modal_state == "settings":
@@ -697,6 +710,10 @@ class MusicPlayerApp(mili.GenericApp):
         self.discord_presence.update()
 
     def close_menu(self):
+        if self.menu_buttons is not None:
+            for btndata in self.menu_buttons:
+                anim = btndata[2]
+                anim.goto_a()
         self.menu_open = False
         self.menu_buttons = None
         self.menu_pos = None

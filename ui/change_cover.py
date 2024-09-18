@@ -149,25 +149,24 @@ class ChangeCoverUI(UIComponent):
         self.is_reset = False
 
         playlist = self.app.playlist_viewer.playlist
+        allmusics = playlist.get_group_sorted_musics()
         shift = pygame.key.get_pressed()[pygame.K_LSHIFT]
-        if len(playlist.musiclist) <= 0:
+        if len(allmusics) <= 0:
             self.message = "Cannot generate from empty playlist"
             self.message_type = "error"
-        elif len(playlist.musiclist) == 1 or len(playlist.musiclist) == 3:
-            self.selected_image = playlist.musiclist[0].cover_or(
-                self.app.music_cover_image
-            )
-        elif len(playlist.musiclist) == 2:
-            self.generate_cover_2(playlist)
-        elif len(playlist.musiclist) < 9 or not shift:
-            self.generate_cover_4(playlist)
+        elif len(allmusics) == 1 or len(allmusics) == 3:
+            self.selected_image = allmusics[0].cover_or(self.app.music_cover_image)
+        elif len(allmusics) == 2:
+            self.generate_cover_2(allmusics)
+        elif len(allmusics) < 9 or not shift:
+            self.generate_cover_4(allmusics)
         elif shift:
-            self.generate_cover_9(playlist)
+            self.generate_cover_9(allmusics)
 
-    def generate_cover_9(self, playlist):
+    def generate_cover_9(self, allmusics):
         covers = []
         for idx in [0, 1, 2, 3, 4, -4, -3, -2, -1]:
-            covers.append(playlist.musiclist[idx].cover_or(self.app.music_cover_image))
+            covers.append(allmusics[idx].cover_or(self.app.music_cover_image))
         size = covers[0].get_width()
         sz2 = size / 2
         new_surf = pygame.Surface((size * 3, size * 3))
@@ -191,10 +190,10 @@ class ChangeCoverUI(UIComponent):
             new_surf.blit(covers[i], covers[i].get_rect(center=pos))
         self.selected_image = new_surf
 
-    def generate_cover_4(self, playlist):
+    def generate_cover_4(self, allmusics):
         covers = []
         for idx in [0, 1, -2, -1]:
-            covers.append(playlist.musiclist[idx].cover_or(self.app.music_cover_image))
+            covers.append(allmusics[idx].cover_or(self.app.music_cover_image))
         size = covers[0].get_width()
         sz2 = size / 2
         new_surf = pygame.Surface((size * 2, size * 2))
@@ -213,9 +212,9 @@ class ChangeCoverUI(UIComponent):
             new_surf.blit(covers[i], covers[i].get_rect(center=pos))
         self.selected_image = new_surf
 
-    def generate_cover_2(self, playlist):
-        first = playlist.musiclist[0].cover_or(self.app.music_cover_image)
-        second = playlist.musiclist[1].cover_or(self.app.music_cover_image)
+    def generate_cover_2(self, allmusics):
+        first = allmusics[0].cover_or(self.app.music_cover_image)
+        second = allmusics[1].cover_or(self.app.music_cover_image)
         size = first.get_width()
         new_surf = pygame.Surface((size * 2, size * 2))
         first = mili.fit_image(pygame.Rect(0, 0, size, size), first, smoothscale=True)

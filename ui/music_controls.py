@@ -43,6 +43,8 @@ class MusicControlsUI(UIComponent):
         self.maxip_image = pygame.transform.flip(self.minip_image, True, True)
 
     def ui(self):
+        if self.app.modal_state != "fullscreen" and self.super_fullscreen:
+            self.super_fullscreen = False
         self.cont_height = 0
         if self.app.music is None:
             return
@@ -125,10 +127,7 @@ class MusicControlsUI(UIComponent):
                     or self.app.playlist_viewer.playlist is not self.app.music.playlist
                 ):
                     self.app.playlist_viewer.enter(self.app.music.playlist)
-                self.app.playlist_viewer.scroll.set_scroll(
-                    0, self.app.music_index * (self.app.mult(80) + 3)
-                )
-                self.app.playlist_viewer.scrollbar.scroll_moved()
+                self.app.playlist_viewer.set_scroll_to_music()
             if it.absolute_hover and self.app.can_interact():
                 bigcover = True
                 self.app.cursor_hover = True
@@ -585,9 +584,9 @@ class MusicControlsUI(UIComponent):
                 if stop_if_end:
                     self.app.end_music()
                 return
-        self.app.play_music(self.app.music.playlist.musiclist[new_idx], new_idx)
-        self.app.playlist_viewer.scroll.scroll(0, self.app.mult(80) + 3)
-        self.app.playlist_viewer.scrollbar.scroll_moved()
+        allmusics = self.app.music.playlist.get_group_sorted_musics()
+        self.app.play_music(allmusics[new_idx], new_idx)
+        self.app.playlist_viewer.set_scroll_to_music(True)
 
     def action_skip_previous(self):
         if len(self.app.music.playlist.musiclist) <= 0:
@@ -595,7 +594,9 @@ class MusicControlsUI(UIComponent):
         new_idx = self.app.music_index - 1
         if new_idx < 0:
             return
-        self.app.play_music(self.app.music.playlist.musiclist[new_idx], new_idx)
+        allmusics = self.app.music.playlist.get_group_sorted_musics()
+        self.app.play_music(allmusics[new_idx], new_idx)
+        self.app.playlist_viewer.set_scroll_to_music(True, -1)
 
     def action_rewind(self):
         self.app.close_menu()
@@ -613,10 +614,7 @@ class MusicControlsUI(UIComponent):
                 new_music,
                 self.app.music.playlist.musiclist.index(new_music),
             )
-            self.app.playlist_viewer.scroll.set_scroll(
-                0, self.app.music_index * (self.app.mult(80) + 3)
-            )
-            self.app.playlist_viewer.scrollbar.scroll_moved()
+            self.app.playlist_viewer.set_scroll_to_music(True)
             return
         self.action_skip_next(True, True)
 

@@ -186,13 +186,11 @@ class HistoryUI(UIComponent):
     def restore_history(self, history: HistoryData):
         self.app.playlist_viewer.enter(history.music.playlist)
         self.app.play_music(
-            history.music, history.music.playlist.musiclist.index(history.music)
+            history.music,
+            history.music.playlist.get_group_sorted_musics().index(history.music),
         )
         self.app.set_music_pos(history.position)
-        self.app.playlist_viewer.scroll.set_scroll(
-            0, self.app.music_index * (self.app.mult(80) + 3)
-        )
-        self.app.playlist_viewer.scrollbar.scroll_moved()
+        self.app.playlist_viewer.set_scroll_to_music()
         self.app.modal_state = "none"
 
     def action_clear(self):

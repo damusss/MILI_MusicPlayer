@@ -15,10 +15,8 @@ class NewPlaylistUI(UIComponent):
         self.anim_upload = animation(-3)
         self.entryline = UIEntryline("Enter name...")
         self.cache = mili.ImageCache()
-
         self.create_type = "empty"
         self.selected_folder = None
-
         self.upload_image = load_icon("upload")
 
     def ui(self):
@@ -165,16 +163,16 @@ class NewPlaylistUI(UIComponent):
             self.selected_folder = result
 
     def action_create_empty(self):
-        if not self.entryline.text.strip() or self.entryline.text[-1] == ".":
+        name = self.entryline.text.strip()
+        if not name or name[-1] == ".":
             pygame.display.message_box(
                 "Invalid name",
-                "Enter a valid name to create the playlist",
+                "Enter a valid name to create the playlist. The name must be a valid folder name (cannot end with '.', must be non empty).",
                 "error",
                 None,
                 ("Understood",),
             )
             return
-        name = self.entryline.text.strip()
         if not self.remove_duplicates(name):
             return
         self.app.playlists.append(Playlist(name, []))
@@ -184,7 +182,7 @@ class NewPlaylistUI(UIComponent):
         if self.selected_folder is None:
             pygame.display.message_box(
                 "No folder selected",
-                "Select a valid folder to create the playlist",
+                "Select a valid folder to create the playlist.",
                 "error",
                 None,
                 ("Understood",),
@@ -193,7 +191,7 @@ class NewPlaylistUI(UIComponent):
         if not os.path.exists(self.selected_folder):
             pygame.display.message_box(
                 "Folder not found",
-                "The selected folder doesn't exist",
+                "The selected folder doesn't exist.",
                 "error",
                 None,
                 ("Understood",),

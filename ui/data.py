@@ -44,6 +44,7 @@ class MusicData:
     audio_converting: bool
     converted: bool
     load_exc = None
+    group: "PlaylistGroup|None"
 
     @classmethod
     def load(cls, realpath, playlist: "Playlist", loading_image=None, converted=False):
@@ -56,12 +57,13 @@ class MusicData:
         self.audio_converting = False
         self.load_exc = None
         self.converted = converted
+        self.group = None
 
         cover_path = f"data/music_covers/{playlist.name}_{self.realstem}.png"
         if not os.path.exists(realpath):
             pygame.display.message_box(
                 "Could not load music",
-                f"Could not load music '{realpath}' as the file doesn't exist anymore. Music will be skipped",
+                f"Could not load music '{realpath}' as the file doesn't exist anymore. Music will be skipped.",
                 "error",
                 None,
                 ("Understood",),
@@ -102,7 +104,7 @@ class MusicData:
             if audiofile is None:
                 pygame.display.message_box(
                     "Could not load music",
-                    f"Could not convert '{realpath}' to audio format: the video has no associated audio. Music will be skipped",
+                    f"Could not convert '{realpath}' to audio format: the video has no associated audio. Music will be skipped.",
                     "error",
                     None,
                     ("Understood",),
@@ -132,7 +134,7 @@ class MusicData:
             except Exception as e:
                 pygame.display.message_box(
                     "Could not load music",
-                    f"Could not convert and load '{realpath}' to Mp3 due to an external exception: '{e}'",
+                    f"Could not convert and load '{realpath}' to Mp3 due to an external exception: '{e}'.",
                     "error",
                     None,
                     ("Understood",),
@@ -183,7 +185,7 @@ class MusicData:
             return False
         pygame.display.message_box(
             "Could not load music",
-            f"Could not convert '{self.realpath}' to audio format due to external exception: '{self.load_exc}'. Music will be removed",
+            f"Could not convert '{self.realpath}' to audio format due to external exception: '{self.load_exc}'. Music will be removed.",
             "error",
             None,
             ("Understood",),
@@ -274,10 +276,40 @@ class HistoryData:
         return HistoryData(musicobj, data["position"], data["duration"])
 
 
+class PlaylistGroup:
+    def __init__(
+        self, name, playlist: "Playlist", musics: list[MusicData], idx=0, collapsed=True
+    ):
+        self.name: str = name
+        self.idx = idx
+        self.collapsed = collapsed
+        self.playlist = playlist
+        self.musics = musics
+        for music in self.musics:
+            music.group = self
+
+    def get_save_data(self):
+        return {
+            "name": self.name,
+            "idx": self.idx,
+            "collapsed": self.collapsed,
+            "paths": [str(music.audiopath) for music in self.musics],
+        }
+
+    def remove(self, music: "MusicData"):
+        self.musics.remove(music)
+        music.group = None
+        music.playlist.musiclist.remove(music)
+        music.playlist.musiclist.insert(self.idx, music)
+
+
 class Playlist:
-    def __init__(self, name, filepaths=None, loading_image=None):
+    def __init__(self, name, filepaths, groups_data=None, loading_image=None):
         self.name = name
         self.cover = None
+        if groups_data is None:
+            groups_data = []
+        self.groups: list[PlaylistGroup] = []
 
         if os.path.exists(f"data/covers/{self.name}.png"):
             if loading_image is not None:
@@ -293,9 +325,50 @@ class Playlist:
         for path in filepaths:
             self.load_music(path, loading_image)
 
+        if len(groups_data) > 0 and isinstance(groups_data[0], PlaylistGroup):
+            self.groups = groups_data
+        else:
+            for gdata in groups_data:
+                self.groups.append(
+                    PlaylistGroup(
+                        gdata["name"],
+                        self,
+                        [
+                            self.musictable[pathlib.Path(gdpath)]
+                            for gdpath in gdata["paths"]
+                        ],
+                        gdata["idx"],
+                        gdata["collapsed"],
+                    )
+                )
+
     @property
     def realpaths(self):
         return [music.realpath for music in self.musiclist]
+
+    def get_group_sorted_musics(self, paths=False, groups=False):
+        ungrouped_musics = [
+            (music.audiopath if paths else music)
+            for music in self.musiclist
+            if music.group is None
+        ]
+        i_offset = 0
+        for group in sorted(self.groups, key=lambda g: g.idx):
+            if groups:
+                if len(group.musics) > 0:
+                    ungrouped_musics.insert(group.idx, group)
+            elif len(group.musics) > 0:
+                ungrouped_musics = (
+                    ungrouped_musics[: group.idx + i_offset]
+                    + (
+                        [music.audiopath for music in group.musics]
+                        if paths
+                        else group.musics
+                    )
+                    + ungrouped_musics[group.idx + i_offset :]
+                )
+                i_offset += len(group.musics) - 1
+        return ungrouped_musics
 
     def load_music(self, path, loading_image=None, idx=-1):
         converted = False
@@ -316,3 +389,5 @@ class Playlist:
     def remove(self, path):
         music = self.musictable.pop(path)
         self.musiclist.remove(music)
+        if music.group is not None:
+            music.group.remove(music)

@@ -5,12 +5,19 @@ A MILI UI demo featuring a rich music player.<br>
 
 # Features
 
-- 30/60 FPS, Power saving, Async loading
-- Custom titlebar/borders
-- Rich Discord presence
-- History
-- Keybinds
+- Perks
+
+  - Modern, fast, responsive UI
+  - 30/60 FPS, Power saving, Async loading
+  - Custom titlebar/borders
+  - Rich Discord presence
+  - History
+  - Keybinds
+
 - Playlists (load from folder, rename, delete, reorder, upload/generate cover, search)
+
+  - Playlist Groups
+
 - Musics (add, rename, delete, reorder, move to playlist, show in explorer, convert to MP3)
 
   - **Audio and Video**: MP4, WEBM, AVI, MKV, MOV, FLV, WMV, M4V, 3GP, MPEG, MPG, OGV, MTS, TS
@@ -32,9 +39,9 @@ Videos must have an associated audio track to be valid.
 
 # Special Gestures
 
-- Hold the mouse wheel button and scroll to reorder playlists and musics
+- Hold the mouse wheel button and scroll to reorder playlists and musics (hold shift to move faster)
 - Click on the currently playing track's cover/video to jump to the track in the playlist
-- Hover a playlist's cover or the currently playing track's cover/video for a fraction of a second to view it full screen
+- Hover a playlist's cover or the currently playing track's cover/video for a fraction of a second to view it in full screen
 
 # Keyboard Shortcuts
 
@@ -51,8 +58,8 @@ Note that the volume buttons do not change the app's volume. It is advised to le
 - **UP**/**KP 8**: Volume up
 - **DOWN**/**KP 2**: Volume down
 - **SPACE**/**ENTER**/**KP ENTER**/**AUDIO PLAY**: Play/pause music
-- **LEFT**/**KP 4**/**AUDIO PREVIOUS**: Previous song
-- **RIGHT**/**KP 6**/**AUDIO NEXT**: Next song
+- **LEFT**/**KP 4**/**AUDIO PREVIOUS**: Previous track
+- **RIGHT**/**KP 6**/**AUDIO NEXT**: Next track
 - **CTRL** + **LEFT**/**CTRL** + **KP 4**: Back 5 seconds
 - **CTRL** + **RIGHT**/**CTRL** + **KP 6**: Skip 5 seconds
 - **CTRL** + **Q**: Quit
@@ -98,7 +105,7 @@ There are 2 settings that can only be accessed in the `data/settings.json` file.
 # Dependencies
 
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)
-- `mili-ui` >= 0.9.6 (UI backend)
+- `mili-ui` >= 0.9.7 (UI backend)
 - `moviepy` >= 1.0.3 (video/audio converter/reader)
 - **[optional]** `pypresence` >= 4.3.0 (Discord presence)
 - **[optional]** `PySDL2` >= 0.9.16 (global mouse state backend)

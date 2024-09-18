@@ -31,7 +31,16 @@ class ListViewerUI(UIComponent):
             "left",
         )
 
+    def ui_check(self):
+        if self.app.modal_state != "none" and self.modal_state != "none":
+            if self.modal_state == "new_playlist":
+                self.new_playlist.close()
+            elif self.modal_state == "rename_playlist":
+                self.rename_playlist.close()
+
     def ui(self):
+        self.ui_check()
+
         if self.modal_state == "none" and self.app.modal_state == "none":
             handle_arrow_scroll(self.app, self.scroll, self.scrollbar)
 
@@ -82,8 +91,7 @@ class ListViewerUI(UIComponent):
                 self.app.playlistadd_image,
                 "top",
             )
-
-        if self.modal_state == "new_playlist":
+        elif self.modal_state == "new_playlist":
             self.new_playlist.ui()
         elif self.modal_state == "rename_playlist":
             self.rename_playlist.ui()
@@ -106,7 +114,7 @@ class ListViewerUI(UIComponent):
 
     def ui_playlist(self, playlist: Playlist):
         with self.mili.begin(
-            (0, 0, 0, self.mult(80)),
+            None,
             {
                 "fillx": "100" if not self.scrollbar.needed else "98",
                 "offset": (
@@ -116,25 +124,43 @@ class ListViewerUI(UIComponent):
                 "padx": self.mult(10),
                 "axis": "x",
                 "align": "center",
+                "resizey": True,
             },
         ) as cont:
             self.ui_playlist_bg(playlist, cont)
 
             imagesize = self.mult(70)
+            padsize = 0
             cover = playlist.cover
             if cover is None:
                 cover = self.app.playlist_cover
             if cover is not None:
                 self.mili.image_element(
                     cover,
-                    {"cache": mili.ImageCache.get_next_cache(), "smoothscale": True},
+                    {"cache": mili.ImageCache.get_next_cache()},
                     (0, 0, imagesize, imagesize),
+                    {"align": "center", "blocking": False},
+                )
+            if self.app.music is not None and self.app.music.playlist is playlist:
+                padsize = self.mult(30)
+                self.mili.image_element(
+                    self.app.playbars_image,
+                    {"cache": mili.ImageCache.get_next_cache()},
+                    (0, 0, padsize, padsize),
                     {"align": "center", "blocking": False},
                 )
             self.mili.text_element(
                 playlist.name,
-                {"size": self.mult(25)},
-                None,
+                {
+                    "size": self.mult(25),
+                    "wraplen": "100",
+                    "growx": False,
+                    "growy": True,
+                    "slow_grow": True,
+                    "align": "left",
+                    "font_align": pygame.FONT_LEFT,
+                },
+                (0, 0, self.app.window.size[0] / 1.1 - imagesize - padsize, 0),
                 {"align": "center", "blocking": False},
             )
             self.ui_playlist_helper(playlist)
@@ -165,26 +191,25 @@ class ListViewerUI(UIComponent):
                     "color": (150,) * 3,
                     "align": "left",
                     "font_align": pygame.FONT_LEFT,
+                    "slow_grow": True,
+                    "growx": False,
+                    "wraplen": "100",
                 },
                 None,
-                {
-                    "align": "center",
-                    "blocking": False,
-                },
+                {"align": "center", "blocking": False, "fillx": True, "filly": True},
             )
 
     def ui_playlist_bg(self, playlist, cont):
+        forcehover = (
+            self.app.menu_data is playlist and self.app.menu_open
+        ) or self.middle_selected is playlist
         if self.app.bg_effect:
             self.mili.image(
                 SURF,
                 {
                     "fill": True,
                     "fill_color": (
-                        *(
-                            LIST_CV[1]
-                            if self.app.menu_data == playlist
-                            else cond(self.app, cont, *LIST_CV),
-                        )
+                        *(LIST_CV[1] if forcehover else cond(self.app, cont, *LIST_CV),)
                         * 3,
                         ALPHA,
                     ),
@@ -196,13 +221,15 @@ class ListViewerUI(UIComponent):
             self.mili.rect(
                 {
                     "color": (
-                        LIST_CV[1]
-                        if self.app.menu_data == playlist
-                        else cond(self.app, cont, *LIST_CV),
+                        LIST_CV[1] if forcehover else cond(self.app, cont, *LIST_CV),
                     )
                     * 3,
                     "border_radius": 0,
                 }
+            )
+        if forcehover:
+            self.mili.rect(
+                {"color": (LIST_CV[1] + 15,) * 3, "border_radius": 0, "outline": 1}
             )
 
     def action_new(self):
@@ -217,7 +244,7 @@ class ListViewerUI(UIComponent):
     def action_delete(self):
         btn = pygame.display.message_box(
             "Confirm deletion",
-            "Are you sure you want to delete the playlist? The songs won't be deleted from disk. This action cannot be undone.",
+            "Are you sure you want to delete the playlist? The tracks won't be deleted from disk. This action cannot be undone.",
             "warn",
             None,
             ("Proceed", "Cancel"),

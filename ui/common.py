@@ -7,7 +7,7 @@ import typing
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
-DEV_VERSION = 33
+DEV_VERSION = 34
 PREFERRED_SIZES = (415, 700)
 MINIP_PREFERRED_SIZES = 200, 200
 UI_SIZES = (480, 720)
@@ -70,9 +70,10 @@ MENU_CV = 6, 20
 MENUB_CV = 20, 30, 18
 MP_OVERLAY_CV = (50, 50, 50, 150), (80, 80, 80, 150), (30, 30, 30, 150)
 MP_BG_FILL = (50, 50, 50, 120)
-ALPHA = 200
+ALPHA = 180
 BORDER_CV = 100
 TOPB_CV = 15, 25, 8
+GROUP_CV = MUSIC_CV  # 15, 25, 10
 
 
 def cond(app: "MusicPlayerApp", it: mili.Interaction, normal, hover, press):

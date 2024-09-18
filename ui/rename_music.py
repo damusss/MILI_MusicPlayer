@@ -12,7 +12,6 @@ class RenameMusicUI(UIComponent):
         self.anim_create = animation(-3)
         self.entryline = UIEntryline("Enter name (no filetype)...")
         self.cache = mili.ImageCache()
-
         self.music: MusicData = None
 
     def ui(self):
@@ -48,6 +47,7 @@ class RenameMusicUI(UIComponent):
             "Rename Music", {"size": self.mult(26)}, None, mili.CENTER
         )
         self.entryline.update(self.app)
+        self.mili.element(None)
         self.entryline.ui(
             self.mili,
             pygame.Rect(
@@ -78,20 +78,14 @@ class RenameMusicUI(UIComponent):
         if not new_name or self.entryline.text[-1] == ".":
             pygame.display.message_box(
                 "Invalid name",
-                "Enter a valid name to rename the music. A name must be a valid file name (cannot end with '.', must be non empty)",
+                "Enter a valid name to rename the music. A name must be a valid file name (cannot end with '.', must be non empty).",
                 "error",
                 None,
                 ("Understood",),
             )
             return
         if new_name == self.music.realstem:
-            pygame.display.message_box(
-                "Invalid name",
-                "Cannot change name to the same name.",
-                "error",
-                None,
-                ("Understood",),
-            )
+            self.close()
             return
         new_path = self.music.realpath.parent / f"{new_name}{self.music.realextension}"
         if os.path.exists(new_path):
@@ -115,7 +109,7 @@ class RenameMusicUI(UIComponent):
         except Exception as e:
             pygame.display.message_box(
                 "Operation failed",
-                f"Failed to rename file due to OS error: '{e}'",
+                f"Failed to rename file due to OS error: '{e}'.",
                 "error",
                 None,
                 ("Understood",),
@@ -138,15 +132,14 @@ class RenameMusicUI(UIComponent):
         idx = self.app.playlist_viewer.playlist.musiclist.index(self.music)
         self.app.playlist_viewer.playlist.remove(self.music.audiopath)
         self.app.playlist_viewer.playlist.load_music(
-            new_path, self.app.loading_image, idx
+            [new_path, "converted"] if self.music.converted else new_path,
+            self.app.loading_image,
+            idx,
         )
-
-        self.close()
 
     def close(self):
         self.entryline.text = ""
-        self.original_path = None
-        self.original_ref = None
+        self.entryline.cursor = 0
         self.app.playlist_viewer.modal_state = "none"
 
     def event(self, event):

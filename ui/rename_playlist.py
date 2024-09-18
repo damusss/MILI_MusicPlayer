@@ -75,7 +75,7 @@ class RenamePlaylistUI(UIComponent):
         if not self.entryline.text.strip() or self.entryline.text[-1] == ".":
             pygame.display.message_box(
                 "Invalid name",
-                "Enter a valid name to rename the playlist. A name must be a valid folder name (cannot end with '.', must be non empty)",
+                "Enter a valid name to rename the playlist. The name must be a valid folder name (cannot end with '.', must be non empty).",
                 "error",
                 None,
                 ("Understood",),
@@ -126,7 +126,13 @@ class RenamePlaylistUI(UIComponent):
             if not os.path.exists(f"data/covers/{name}.png"):
                 os.rename(f"data/covers/{old_name}.png", f"data/covers/{name}.png")
         self.app.menu_data.__init__(
-            name, list(self.app.menu_data.realpaths), self.app.loading_image
+            name,
+            [
+                [music.realpath, "converted"] if music.converted else music.realpath
+                for music in self.app.menu_data.musictable
+            ],
+            self.app.menu_data.groups,
+            self.app.loading_image,
         )
 
     def close(self):
