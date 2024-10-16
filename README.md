@@ -7,6 +7,7 @@ A MILI UI demo featuring a rich music player.<br>
 
 - Perks
 
+  - Tooltips
   - Modern, fast, responsive UI
   - 30/60 FPS, Power saving, Async loading
   - Custom titlebar/borders
@@ -16,7 +17,7 @@ A MILI UI demo featuring a rich music player.<br>
 
 - Playlists (load from folder, rename, delete, reorder, upload/generate cover, search)
 
-  - Playlist Groups
+  - Playlist Groups (collapsable, horizontal/vertical layout)
 
 - Musics (add, rename, delete, reorder, move to playlist, show in explorer, convert to MP3)
 
@@ -42,6 +43,7 @@ Videos must have an associated audio track to be valid.
 - Hold the mouse wheel button and scroll to reorder playlists and musics (hold shift to move faster)
 - Click on the currently playing track's cover/video to jump to the track in the playlist
 - Hover a playlist's cover or the currently playing track's cover/video for a fraction of a second to view it in full screen
+- Middle click the playing track's video cover to set the frame as the music cover in the playlist. Delete the cover file from the data/music_covers folder to revert
 
 # Keyboard Shortcuts
 
@@ -105,7 +107,7 @@ There are 2 settings that can only be accessed in the `data/settings.json` file.
 # Dependencies
 
 - `pygame-ce` >= 2.5.1 (music, windowing, input, rendering backend)
-- `mili-ui` >= 0.9.7 (UI backend)
+- `mili-ui` >= 1.0.0 (UI backend)
 - `moviepy` >= 1.0.3 (video/audio converter/reader)
 - **[optional]** `pypresence` >= 4.3.0 (Discord presence)
 - **[optional]** `PySDL2` >= 0.9.16 (global mouse state backend)

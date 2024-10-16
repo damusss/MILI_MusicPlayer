@@ -29,6 +29,7 @@ class ListViewerUI(UIComponent):
             self.app.toggle_custom_title,
             self.app.resize_image,
             "left",
+            tooltip="Enable custom borders",
         )
 
     def ui_check(self):
@@ -57,7 +58,8 @@ class ListViewerUI(UIComponent):
 
         self.mili.id_checkpoint(45)
         with self.mili.begin(
-            (0, 0, self.app.window.size[0], 0), {"filly": True}, get_data=True
+            (0, 0, self.app.window.size[0], 0),
+            {"filly": True},
         ) as scroll_cont:
             if len(self.app.playlists) > 0:
                 self.scroll.update(scroll_cont)
@@ -90,6 +92,7 @@ class ListViewerUI(UIComponent):
                 self.action_new,
                 self.app.playlistadd_image,
                 "top",
+                tooltip="Create a playlist",
             )
         elif self.modal_state == "new_playlist":
             self.new_playlist.ui()
@@ -111,6 +114,7 @@ class ListViewerUI(UIComponent):
                         handle.hovered or handle.unhover_pressed
                     ) and self.app.can_interact():
                         self.app.cursor_hover = True
+                        self.app.tick_tooltip(None)
 
     def ui_playlist(self, playlist: Playlist):
         with self.mili.begin(
@@ -163,7 +167,6 @@ class ListViewerUI(UIComponent):
                 (0, 0, self.app.window.size[0] / 1.1 - imagesize - padsize, 0),
                 {"align": "center", "blocking": False},
             )
-            self.ui_playlist_helper(playlist)
 
             if self.app.can_interact():
                 if cont.hovered or cont.unhover_pressed:
@@ -176,28 +179,21 @@ class ListViewerUI(UIComponent):
                 ):
                     self.app.open_menu(
                         playlist,
-                        (self.app.rename_image, self.action_rename, self.menu_anims[0]),
-                        (self.app.delete_image, self.action_delete, self.menu_anims[1]),
+                        (
+                            self.app.rename_image,
+                            self.action_rename,
+                            self.menu_anims[0],
+                            "Rename playlist",
+                        ),
+                        (
+                            self.app.delete_image,
+                            self.action_delete,
+                            self.menu_anims[1],
+                            "Delete playlist",
+                        ),
                     )
                 elif cont.just_pressed_button == pygame.BUTTON_MIDDLE:
                     self.middle_selected = playlist
-
-    def ui_playlist_helper(self, playlist):
-        if self.middle_selected is playlist:
-            self.mili.text_element(
-                "Use the mouse wheel to move the playlist",
-                {
-                    "size": self.mult(13),
-                    "color": (150,) * 3,
-                    "align": "left",
-                    "font_align": pygame.FONT_LEFT,
-                    "slow_grow": True,
-                    "growx": False,
-                    "wraplen": "100",
-                },
-                None,
-                {"align": "center", "blocking": False, "fillx": True, "filly": True},
-            )
 
     def ui_playlist_bg(self, playlist, cont):
         forcehover = (
@@ -253,6 +249,10 @@ class ListViewerUI(UIComponent):
             self.app.close_menu()
             return
         try:
+            for music in self.app.menu_data.musiclist:
+                if music is self.app.music:
+                    self.app.end_music()
+                self.app.remove_from_history(music)
             self.app.playlists.remove(self.app.menu_data)
         except Exception:
             pass

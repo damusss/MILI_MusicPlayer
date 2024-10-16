@@ -49,9 +49,7 @@ class SettingsUI(UIComponent):
                 self.ui_modal_content()
 
             self.ui_overlay_btn(
-                self.anim_close,
-                self.close,
-                self.app.close_image,
+                self.anim_close, self.close, self.app.close_image, tooltip="Close"
             )
 
     def ui_modal_content(self):
@@ -77,19 +75,30 @@ class SettingsUI(UIComponent):
                 vol_image = self.vol1_image
             elif self.app.volume > 0.05:
                 vol_image = self.vollow_image
-            self.ui_image_btn(vol_image, self.action_mute, self.anims[0])
+            self.ui_image_btn(
+                vol_image,
+                self.action_mute,
+                self.anims[0],
+                tooltip="Mute/unmute the music",
+            )
 
             self.ui_image_btn(
                 self.app.loopon_image if self.app.loops else self.app.loopoff_image,
                 self.action_loop,
                 self.anims[1],
                 br="50" if not self.app.loops else "5",
+                tooltip="Disable playlist looping"
+                if self.app.loops
+                else "Enable playlist looping",
             )
             self.ui_image_btn(
                 self.shuffleon_image if self.app.shuffle else self.shuffleoff_image,
                 self.action_shuffle,
                 self.anims[2],
                 br="50" if not self.app.shuffle else "5",
+                tooltip="Enable playlist shuffling"
+                if self.app.shuffle
+                else "Enable playlist shuffle",
             )
 
     def ui_buttons_bottom(self):
@@ -104,15 +113,27 @@ class SettingsUI(UIComponent):
             }
             | mili.PADLESS,
         ):
-            self.ui_image_btn(self.history_image, self.action_history, self.anims[3])
             self.ui_image_btn(
-                self.keybinds_image, self.action_keybinds, self.anims[4], br="5"
+                self.history_image,
+                self.action_history,
+                self.anims[3],
+                tooltip="Open history",
+            )
+            self.ui_image_btn(
+                self.keybinds_image,
+                self.action_keybinds,
+                self.anims[4],
+                br="5",
+                tooltip="Open keybindings",
             )
             self.ui_image_btn(
                 self.fps60_image if self.app.user_framerate == 60 else self.fps30_image,
                 self.action_fps,
                 self.anims[5],
                 br="5",
+                tooltip="Set the framerate to 30"
+                if self.app.user_framerate == 60
+                else "Set the framerate to 60",
             )
             self.ui_image_btn(
                 self.discordoff_image
@@ -120,6 +141,9 @@ class SettingsUI(UIComponent):
                 else self.discordon_image,
                 self.action_discord,
                 self.anims[6],
+                tooltip="Disable the discord presence"
+                if self.app.discord_presence.active
+                else "Enable the discord presence",
             )
 
     def ui_slider(self):
@@ -128,7 +152,6 @@ class SettingsUI(UIComponent):
         with self.mili.begin(
             (0, 0, 0, self.mult(10)),
             {"align": "center", "fillx": "94"} | self.slider.area_style,
-            get_data=True,
         ) as bar:
             self.slider.update_area(bar)
             self.mili.rect({"color": (30,) * 3})
@@ -136,7 +159,7 @@ class SettingsUI(UIComponent):
             if self.app.volume > 0:
                 self.mili.rect_element(
                     {"color": (110,) * 3},
-                    (0, 0, bar.rect.w * self.slider.valuex, bar.rect.h),
+                    (0, 0, bar.data.rect.w * self.slider.valuex, bar.data.rect.h),
                     {"ignore_grid": True, "blocking": False},
                 )
             handle = self.ui_slider_handle()
@@ -156,8 +179,8 @@ class SettingsUI(UIComponent):
 
             if self.bar_controlled:
                 mposx = pygame.mouse.get_pos()[0]
-                relmpos = mposx - bar.absolute_rect.x
-                volume = pygame.math.clamp(relmpos / bar.absolute_rect.w, 0, 1)
+                relmpos = mposx - bar.data.absolute_rect.x
+                volume = pygame.math.clamp(relmpos / bar.data.absolute_rect.w, 0, 1)
                 self.change_volume(volume)
                 self.slider.valuex = volume
                 self.app.cursor_hover = True
@@ -166,15 +189,12 @@ class SettingsUI(UIComponent):
 
     def ui_slider_handle(self):
         if handle := self.mili.element(
-            self.slider.handle_rect.move(0, self.slider.handle_rect.h / 8),
+            self.slider.handle_rect,
             self.slider.handle_style,
         ):
             self.slider.update_handle(handle)
             self.mili.circle(
-                {"color": (255,) * 3}
-                | mili.style.same(
-                    self.mult(12 + self.anim_handle.value), "padx", "pady"
-                )
+                {"color": (255,) * 3, "pad": self.mult(12 + self.anim_handle.value)}
             )
             if not self.bar_controlled:
                 if handle.just_hovered and self.app.can_interact():

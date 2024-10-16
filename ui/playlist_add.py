@@ -44,9 +44,7 @@ class PlaylistAddUI(UIComponent):
                 self.ui_modal_content()
 
             self.ui_overlay_btn(
-                self.anim_close,
-                self.close,
-                self.app.close_image,
+                self.anim_close, self.close, self.app.close_image, tooltip="Close"
             )
 
     def ui_modal_content(self):
@@ -54,17 +52,15 @@ class PlaylistAddUI(UIComponent):
             None,
             {"fillx": True, "resizey": True, "axis": "x", "anchor": "max_spacing"}
             | mili.PADLESS,
-            get_data=True,
         ) as row:
             with self.mili.begin(
-                (0, 0, row.rect.w / 2.01, 0),
+                (0, 0, row.data.rect.w / 2.01, 0),
                 {"resizey": True, "padx": 0, "pady": 0},
-                get_data=True,
             ) as left_cont:
                 self.ui_section_btn(left_cont, "music", "Music")
 
             with self.mili.begin(
-                (0, 0, row.rect.w / 2.01, 0),
+                (0, 0, row.data.rect.w / 2.01, 0),
                 {"resizey": True, "padx": 0, "pady": 0},
             ) as right_cont:
                 self.ui_section_btn(right_cont, "group", "Group")
@@ -95,6 +91,12 @@ class PlaylistAddUI(UIComponent):
                 self.create_type = ctype
             if cont.hovered or cont.unhover_pressed:
                 self.app.cursor_hover = True
+            if cont.hovered:
+                self.app.tick_tooltip(
+                    "Upload and add tracks to the playlist"
+                    if ctype == "music"
+                    else "Create an empty playlist group with a name"
+                )
 
     def ui_add_music_content(self):
         if self.selected_files is None:
@@ -127,9 +129,13 @@ class PlaylistAddUI(UIComponent):
                 self.action_music_from_dialog,
                 self.anim_upload,
                 br="30",
+                tooltip="Choose the track files",
             )
             self.ui_image_btn(
-                self.app.confirm_image, self.action_confirm_music, self.anim_create
+                self.app.confirm_image,
+                self.action_confirm_music,
+                self.anim_create,
+                tooltip="Confirm and add the tracks",
             )
         self.ui_warning()
 
@@ -144,7 +150,10 @@ class PlaylistAddUI(UIComponent):
             self.mult,
         )
         self.ui_image_btn(
-            self.app.confirm_image, self.action_confirm_group, self.anim_create
+            self.app.confirm_image,
+            self.action_confirm_group,
+            self.anim_create,
+            tooltip="Confirm and create the group",
         )
 
     def ui_warning(self):
@@ -222,13 +231,22 @@ class PlaylistAddUI(UIComponent):
                 ("Understood",),
             )
             return
+        if len(self.app.playlist_viewer.playlist.groups) <= 0:
+            idx = 0
+        else:
+            idx = (
+                max([group.idx for group in self.app.playlist_viewer.playlist.groups])
+                + 1
+            )
         self.app.playlist_viewer.playlist.groups.append(
-            PlaylistGroup(name, self.app.playlist_viewer.playlist, [], 0)
+            PlaylistGroup(name, self.app.playlist_viewer.playlist, [], idx)
         )
         self.close()
 
     def close(self):
         self.selected_files = None
+        self.entryline.text = ""
+        self.entryline.cursor = 0
         self.app.playlist_viewer.modal_state = "none"
         self.create_type = "music"
 

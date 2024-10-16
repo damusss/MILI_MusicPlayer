@@ -1,3 +1,4 @@
+print("Music Player")
 import sys
 import mili
 import time
@@ -23,6 +24,7 @@ from ui.data import (
     MusicData,
     Playlist,
     NotCached,
+    PlaylistGroup,
 )
 
 try:
@@ -67,11 +69,11 @@ class MusicPlayerApp(mili.GenericApp):
         self.window.minimum_size = WIN_MIN_SIZE
         pygame.key.set_repeat(500, 30)
         print(f"MILI {mili.VERSION_STR}")
-        if mili.VERSION < (0, 9, 7) or pygame.vernum < (2, 5, 1):
+        if mili.VERSION < (1, 0, 0) or pygame.vernum < (2, 5, 1):
             pygame.display.message_box(
                 "Outdated dependencies",
                 "The core dependencies of the music player are outdated, please update them to the latest version. "
-                f"pygame-ce: needed >=2.5.1, found {pygame.ver}. MILI: needed >=0.9.7, found {mili.VERSION_STR}. "
+                f"pygame-ce: needed >=2.5.1, found {pygame.ver}. MILI: needed >=1.0.0, found {mili.VERSION_STR}. "
                 "The application will now quit.",
                 "error",
                 None,
@@ -117,6 +119,8 @@ class MusicPlayerApp(mili.GenericApp):
         self.last_save = SAVE_COOLDOWN
         self.stolen_cursor = False
         self.cursor_hover = False
+        self.tooltip_hover_time = 0
+        self.tooltip_data = None
         # be effect/mili
         self.bg_effect_image = None
         self.bg_black_image = None
@@ -126,7 +130,7 @@ class MusicPlayerApp(mili.GenericApp):
         self.anim_settings = animation(-5)
         # menu
         self.menu_open = False
-        self.menu_data: Playlist | MusicData = None
+        self.menu_data: Playlist | MusicData | PlaylistGroup = None
         self.menu_buttons = None
         self.menu_pos = None
         # music
@@ -240,6 +244,7 @@ class MusicPlayerApp(mili.GenericApp):
         win_size = self.window.size
         discord_presence = False
         default_binds = self.keybinds.get_save_data()
+        minip_data = [MINIP_PREFERRED_SIZES, None, True]
         data = load_json(
             "data/settings.json",
             {
@@ -255,6 +260,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "discord_presence": discord_presence,
                 "strip_youtube_id": False,
                 "taskbar_height": 0,
+                "miniplayer": minip_data,
                 "keybinds": default_binds,
             },
         )
@@ -272,6 +278,10 @@ class MusicPlayerApp(mili.GenericApp):
             self.before_maximize_data = data.get("before_maximize_data", None)
             self.strip_youtube_id = data.get("strip_youtube_id", False)
             self.taskbar_height = data.get("taskbar_height", 0)
+            minip = self.music_controls.minip
+            minip.last_size, minip.last_pos, minip.last_borderless = data.get(
+                "miniplayer", minip_data
+            )
         self.target_framerate = self.user_framerate
         if win_pos != self.window.position:
             self.window.position = win_pos
@@ -374,6 +384,11 @@ class MusicPlayerApp(mili.GenericApp):
         if len(self.history_data) > HISTORY_LEN:
             self.history_data.pop(0)
 
+    def remove_from_history(self, music: MusicData):
+        for olddata in self.history_data.copy():
+            if olddata.music is music:
+                self.history_data.remove(olddata)
+
     def play_music(self, music: MusicData, idx):
         if music.pending:
             self.end_music()
@@ -453,6 +468,8 @@ class MusicPlayerApp(mili.GenericApp):
         history_data = [history.get_save_data() for history in self.history_data]
         write_json("data/playlists.json", playlist_data)
         write_json("data/history.json", history_data)
+        minip = self.music_controls.minip
+        minip.save_state()
         write_json(
             "data/settings.json",
             {
@@ -468,6 +485,7 @@ class MusicPlayerApp(mili.GenericApp):
                 "discord_presence": self.discord_presence.active,
                 "strip_youtube_id": self.strip_youtube_id,
                 "taskbar_height": self.taskbar_height,
+                "miniplayer": [minip.last_size, minip.last_pos, minip.last_borderless],
                 "keybinds": self.keybinds.get_save_data(),
             },
         )
@@ -535,6 +553,9 @@ class MusicPlayerApp(mili.GenericApp):
             if self.discord_presence.connecting:
                 self.discord_presence.update_connecting()
 
+        if len(mili.get_font_cache()) > 20:
+            mili.clear_font_cache()
+
     def ui(self):
         self.mili.rect({"color": (BG_CV,) * 3, "border_radius": 0})
         if self.custom_title:
@@ -586,6 +607,7 @@ class MusicPlayerApp(mili.GenericApp):
                     self.open_settings,
                     self.settings_image,
                     "bottom",
+                    tooltip="Open settings",
                 )
 
         if (
@@ -605,6 +627,13 @@ class MusicPlayerApp(mili.GenericApp):
         self.mili.id_checkpoint(5200)
         if self.menu_open:
             self.ui_menu()
+        self.mili.id_checkpoint(5500)
+
+        if not self.cursor_hover:
+            self.tooltip_data = None
+        elif self.tooltip_data:
+            if pygame.time.get_ticks() - self.tooltip_hover_time >= TOOLTIP_COOLDOWN:
+                self.ui_tooltip()
 
         if not self.stolen_cursor and self.cursor_hover and self.focused:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
@@ -614,6 +643,30 @@ class MusicPlayerApp(mili.GenericApp):
         if not self.custom_borders.dragging and not self.custom_borders.resizing:
             self.custom_borders.cumulative_relative = pygame.Vector2()
 
+    def ui_tooltip(self):
+        pad = self.mult(2)
+        txtstyle = {
+            "size": self.mult(13),
+            "color": (120,) * 3,
+            "slow_grow": True,
+            "pady": pad,
+            "padx": pad,
+        }
+        size = self.mili.text_size(self.tooltip_data, txtstyle)
+        if size.x > self.window.size[0] / 1.1:
+            txtstyle["wraplen"] = self.window.size[0] / 1.1
+            size = self.mili.text_size(self.tooltip_data, txtstyle)
+        mpos = pygame.Vector2(pygame.mouse.get_pos())
+        posx = min(mpos.x, self.window.size[0] - size.x - pad * 4)
+        posy = max(mpos.y - pad * 3 - size.y, pad * 2)
+        if self.mili.element(
+            ((posx, posy), (0, 0)),
+            {"blocking": False, "ignore_grid": True, "parent_id": 0, "z": 999999},
+        ):
+            self.mili.rect({"color": (10,) * 3, "border_radius": 0})
+            self.mili.text(self.tooltip_data, txtstyle)
+            self.mili.rect({"color": (30,) * 3, "outline": 1, "border_radius": 0})
+
     def ui_top(self):
         if self.custom_title:
             with self.mili.begin(
@@ -622,7 +675,12 @@ class MusicPlayerApp(mili.GenericApp):
                 self.mili.rect({"border_radius": 0, "color": (BORDER_CV / 8,) * 3})
 
                 self.prefabs.ui_overlay_top_btn(
-                    self.anims[0], self.quit, self.close_image, "right", red=True
+                    self.anims[0],
+                    self.quit,
+                    self.close_image,
+                    "right",
+                    red=True,
+                    tooltip="Quit app",
                 )
                 self.prefabs.ui_overlay_top_btn(
                     self.anims[1],
@@ -630,6 +688,7 @@ class MusicPlayerApp(mili.GenericApp):
                     self.maximize_image,
                     "right",
                     1,
+                    tooltip="Restore window" if self.maximized else "Maximize window",
                 )
                 self.prefabs.ui_overlay_top_btn(
                     self.anims[2],
@@ -637,6 +696,7 @@ class MusicPlayerApp(mili.GenericApp):
                     self.minimize_image,
                     "right",
                     2,
+                    tooltip="Minimize window",
                 )
                 self.prefabs.ui_overlay_top_btn(
                     self.anims[3],
@@ -644,13 +704,11 @@ class MusicPlayerApp(mili.GenericApp):
                     self.resize_image,
                     "right",
                     3,
+                    tooltip="Disable custom borders",
                 )
         else:
             self.prefabs.ui_overlay_top_btn(
-                self.anims[0],
-                self.quit,
-                self.close_image,
-                "right",
+                self.anims[0], self.quit, self.close_image, "right", tooltip="Quit app"
             )
         if self.view_state == "playlist":
             self.playlist_viewer.ui_top_buttons()
@@ -683,11 +741,17 @@ class MusicPlayerApp(mili.GenericApp):
             )
             for bdata in self.menu_buttons:
                 br = "50"
+                tooltip = None
                 if len(bdata) == 3:
                     bimage, baction, banim = bdata
-                else:
-                    bimage, baction, banim, br = bdata
-                self.prefabs.ui_image_btn(bimage, baction, banim, 40, br)
+                elif len(bdata) == 4:
+                    if len(bdata[-1]) <= 2:
+                        bimage, baction, banim, br = bdata
+                    else:
+                        bimage, baction, banim, tooltip = bdata
+                elif len(bdata) == 5:
+                    bimage, baction, banim, br, tooltip = bdata
+                self.prefabs.ui_image_btn(bimage, baction, banim, 40, br, tooltip)
             if (
                 not menu.absolute_hover
                 and any([btn is True for btn in pygame.mouse.get_pressed()])
@@ -699,6 +763,11 @@ class MusicPlayerApp(mili.GenericApp):
                 )
             ):
                 self.close_menu()
+
+    def tick_tooltip(self, text):
+        if text != self.tooltip_data:
+            self.tooltip_data = text
+            self.tooltip_hover_time = pygame.time.get_ticks()
 
     def open_settings(self):
         self.modal_state = "settings"
@@ -791,8 +860,14 @@ class MusicPlayerApp(mili.GenericApp):
             self.focused = True
         if event.type == pygame.WINDOWFOCUSLOST and event.window == self.window:
             self.focused = False
+            self.close_menu()
         if event.type == pygame.WINDOWRESIZED and event.window == self.window:
             self.make_bg_image()
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.tooltip_data = None
+            if self.menu_open:
+                self.close_menu()
+                return
         self.music_controls.event(event)
         if not self.can_interact():
             return
@@ -860,6 +935,7 @@ class MusicPlayerApp(mili.GenericApp):
                     if btn == 0:
                         return
         self.save()
+        print("Application quit")
         pygame.quit()
         raise SystemExit
 

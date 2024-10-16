@@ -42,9 +42,7 @@ class NewPlaylistUI(UIComponent):
                 self.ui_modal_content()
 
             self.ui_overlay_btn(
-                self.anim_close,
-                self.close,
-                self.app.close_image,
+                self.anim_close, self.close, self.app.close_image, tooltip="Close"
             )
 
     def ui_modal_content(self):
@@ -55,17 +53,15 @@ class NewPlaylistUI(UIComponent):
             None,
             {"fillx": True, "resizey": True, "axis": "x", "anchor": "max_spacing"}
             | mili.PADLESS,
-            get_data=True,
         ) as row:
             with self.mili.begin(
-                (0, 0, row.rect.w / 2.01, 0),
+                (0, 0, row.data.rect.w / 2.01, 0),
                 {"resizey": True, "padx": 0, "pady": 0},
-                get_data=True,
             ) as left_cont:
                 self.ui_section_btn(left_cont, "empty", "Empty")
 
             with self.mili.begin(
-                (0, 0, row.rect.w / 2.01, 0),
+                (0, 0, row.data.rect.w / 2.01, 0),
                 {"resizey": True, "padx": 0, "pady": 0},
             ) as right_cont:
                 self.ui_section_btn(right_cont, "folder", "Load Folder")
@@ -96,6 +92,12 @@ class NewPlaylistUI(UIComponent):
                 self.create_type = ctype
             if cont.hovered or cont.unhover_pressed:
                 self.app.cursor_hover = True
+            if cont.hovered:
+                self.app.tick_tooltip(
+                    "Create an empty playlist with a name"
+                    if ctype == "empty"
+                    else "Create a playlist with all the tracks inside a folder"
+                )
 
     def ui_empty_playlist_modal(self):
         self.entryline.update(self.app)
@@ -108,7 +110,10 @@ class NewPlaylistUI(UIComponent):
             self.mult,
         )
         self.ui_image_btn(
-            self.app.confirm_image, self.action_create_empty, self.anim_create
+            self.app.confirm_image,
+            self.action_create_empty,
+            self.anim_create,
+            tooltip="Confirm and create the playlist",
         )
 
     def ui_folder_playlist_modal(self):
@@ -140,9 +145,13 @@ class NewPlaylistUI(UIComponent):
                 self.action_folder_from_dialog,
                 self.anim_upload,
                 br="30",
+                tooltip="Choose the folder for the playlist",
             )
             self.ui_image_btn(
-                self.app.confirm_image, self.action_create_from_folder, self.anim_create
+                self.app.confirm_image,
+                self.action_create_from_folder,
+                self.anim_create,
+                tooltip="Confirm and create the playlist",
             )
         self.mili.text_element(
             "Creating might take some time if video files are present",
@@ -173,8 +182,16 @@ class NewPlaylistUI(UIComponent):
                 ("Understood",),
             )
             return
-        if not self.remove_duplicates(name):
-            return
+        for p in self.app.playlists.copy():
+            if p.name == name:
+                pygame.display.message_box(
+                    "Invalid name",
+                    "A playlist with the same name already exists, choose a different name or rename the other playlist.",
+                    "error",
+                    None,
+                    ("Understood",),
+                )
+                return
         self.app.playlists.append(Playlist(name, []))
         self.close()
 
@@ -205,10 +222,29 @@ class NewPlaylistUI(UIComponent):
             for file in os.listdir(path)
             if (path / file).suffix[1:].lower() in FORMATS
         ]
-        if not self.remove_duplicates(name):
-            return
-        playlist = Playlist(name, paths)
-        self.app.playlists.append(playlist)
+        original = None
+        for p in self.app.playlists.copy():
+            if p.name == name:
+                original = p
+                btn = pygame.display.message_box(
+                    "Playlist refresh",
+                    "A playlist with the same name already exists. If you continue, any new track found in the selected folder will be "
+                    "added to the existing playlist.",
+                    "warn",
+                    None,
+                    ("Continue", "Cancel"),
+                )
+                if btn == 1:
+                    self.selected_folder = None
+                    return
+        if original is None:
+            playlist = Playlist(name, paths)
+            self.app.playlists.append(playlist)
+        else:
+            realpaths = original.realpaths
+            for newpath in paths:
+                if newpath not in realpaths:
+                    original.load_music(newpath, self.app.loading_image)
         self.close()
 
     def remove_duplicates(self, name):
@@ -223,6 +259,9 @@ class NewPlaylistUI(UIComponent):
                 )
                 if btn == 1:
                     return False
+                for music in p.musiclist:
+                    if music is self.app.music:
+                        self.app.end_music()
                 self.app.playlists.remove(p)
         return True
 

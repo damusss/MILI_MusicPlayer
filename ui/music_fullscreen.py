@@ -53,17 +53,10 @@ class MusicFullscreenUI(UIComponent):
                 self.anims[0],
                 self.close,
                 self.fullscreenclose_image,
+                tooltip="Disable fullscreen"
+                if self.app.music_controls.super_fullscreen
+                else "Minimize",
             )
-            if not self.app.music_controls.super_fullscreen:
-                self.ui_overlay_btn(
-                    self.anims[1],
-                    self.action_superfullscreen,
-                    self.app.music_controls.fullscreen_image,
-                    "top",
-                )
-
-    def action_superfullscreen(self):
-        self.app.music_controls.super_fullscreen = True
 
     def close(self):
         if self.app.music_controls.super_fullscreen:

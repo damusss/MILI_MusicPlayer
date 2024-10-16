@@ -51,6 +51,7 @@ class EditKeybindsUI(UIComponent):
                 self.anim_back,
                 self.back,
                 self.app.back_image,
+                tooltip="Back to settings",
             )
         if self.app.listening_key:
             self.ui_listening()
@@ -64,10 +65,15 @@ class EditKeybindsUI(UIComponent):
                 "Keybindings", {"size": self.mult(26)}, None, mili.CENTER
             )
             self.ui_image_btn(
-                self.app.reset_image, self.action_reset, self.anim_reset, 30
+                self.app.reset_image,
+                self.action_reset,
+                self.anim_reset,
+                30,
+                tooltip="Reset every binding to its default value",
             )
         with self.mili.begin(
-            None, {"fillx": True, "filly": True} | mili.PADLESS, get_data=True
+            None,
+            {"fillx": True, "filly": True} | mili.PADLESS,
         ) as cont:
             self.scroll.update(cont)
             self.scrollbar.short_size = self.mult(self.sbar_size)
@@ -92,6 +98,7 @@ class EditKeybindsUI(UIComponent):
                         handle.hovered or handle.unhover_pressed
                     ) and self.app.can_interact():
                         self.app.cursor_hover = True
+                        self.app.tick_tooltip(None)
 
     def ui_keybind(self, name, bind: Keybinds.Binding):
         height = self.mult(30)
@@ -155,6 +162,10 @@ class EditKeybindsUI(UIComponent):
                             self.start_listening(binding, i)
                         if it.hovered or it.unhover_pressed:
                             self.app.cursor_hover = True
+                        if it.hovered:
+                            self.app.tick_tooltip(
+                                "Start listening to change this binding key"
+                            )
 
     def ui_listening(self):
         with self.mili.begin(
@@ -197,8 +208,9 @@ class EditKeybindsUI(UIComponent):
                             self.action_remove_keybind,
                             self.anim_remove,
                             30,
+                            tooltip="Disable the secondary key for this binding",
                         )
-                text = "Press any key (optional CTRL modifier)"
+                text = "Press any key (optional CTRL modifier, ESCAPE to cancel)"
                 color = (120,) * 3
                 size = 18
                 if self.listening_key is not None:

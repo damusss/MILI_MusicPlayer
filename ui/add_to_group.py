@@ -38,7 +38,7 @@ class AddToGroupUI(UIComponent):
                     "Add to Group", {"size": self.mult(26)}, None, mili.CENTER
                 )
                 self.mili.text_element(
-                    "Select the group you want to add the music to"
+                    "Select the group you want to add the track to"
                     if len(self.music.playlist.groups) > 1
                     else "Not enough groups to add to",
                     {
@@ -55,14 +55,13 @@ class AddToGroupUI(UIComponent):
                 self.mili.element((0, 0, 0, self.mult(5)))
 
             self.ui_overlay_btn(
-                self.anim_close,
-                self.close,
-                self.app.close_image,
+                self.anim_close, self.close, self.app.close_image, tooltip="Close"
             )
 
     def ui_groups(self):
         with self.mili.begin(
-            None, {"fillx": True, "filly": True}, get_data=True
+            None,
+            {"fillx": True, "filly": True},
         ) as cont:
             self.scroll.update(cont)
             self.scrollbar.short_size = self.mult(self.sbar_size)
@@ -98,6 +97,9 @@ class AddToGroupUI(UIComponent):
                             self.add(group)
                         if it.hovered or it.unhover_pressed:
                             self.app.cursor_hover = True
+                        if it.hovered:
+                            self.app.tick_tooltip("Add the track to this group")
+
             self.ui_scrollbar()
 
     def ui_scrollbar(self):
@@ -115,6 +117,7 @@ class AddToGroupUI(UIComponent):
                         handle.hovered or handle.unhover_pressed
                     ) and self.app.can_interact():
                         self.app.cursor_hover = True
+                        self.app.tick_tooltip(None)
 
     def add(self, group: PlaylistGroup):
         self.music.group = group

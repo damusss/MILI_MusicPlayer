@@ -4,10 +4,12 @@ import json
 import pygame
 import typing
 
+# when width is double height make the controls split screen
+
 if typing.TYPE_CHECKING:
     from MusicPlayer import MusicPlayerApp
 
-DEV_VERSION = 34
+DEV_VERSION = 35
 PREFERRED_SIZES = (415, 700)
 MINIP_PREFERRED_SIZES = 200, 200
 UI_SIZES = (480, 720)
@@ -46,7 +48,6 @@ FORMATS = (
     + ["wav", "mp3", "ogg", "flac", "opus", "wv", "mod", "aiff"]
 )
 POS_UNSUPPORTED = ["wav", "opus", "wv", "aiff"]
-
 MUSIC_ENDEVENT = pygame.event.custom_type()
 HISTORY_LEN = 100
 RESIZE_SIZE = 3
@@ -54,6 +55,7 @@ WIN_MIN_SIZE = (200, 300)
 DISCORD_COOLDOWN = 20000
 BIG_COVER_COOLDOWN = 300
 SAVE_COOLDOWN = 60000 * 2
+TOOLTIP_COOLDOWN = 1200
 RATIO_MIN = 0.52
 BG_CV = 3
 MUSIC_CV = 3, 18, 8
@@ -149,6 +151,22 @@ def parse_music_stem(app: "MusicPlayerApp", stem: str):
     return stem
 
 
+def format_music_time(position, duration=None):
+    string = (
+        f"{int(position/60):.0f}".rjust(2, "0")
+        + ":"
+        + f"{position %60:.0f}".rjust(2, "0")
+    )
+    if duration is not None:
+        string += (
+            "/"
+            + f"{int(duration/60):.0f}".rjust(2, "0")
+            + ":"
+            + f"{duration % 60:.0f}".rjust(2, "0")
+        )
+    return string
+
+
 class UIComponent:
     def __init__(self, app: "MusicPlayerApp"):
         self.app = app
@@ -159,11 +177,19 @@ class UIComponent:
 
     def ui(self): ...
 
-    def mult(self, size):
+    def mult(self, size, clamp0=True):
+        if not clamp0:
+            return int(size * self.app.ui_mult)
         return max(0, int(size * self.app.ui_mult))
 
     def ui_image_btn(
-        self, image, action, anim: mili.animation.ABAnimation, size=62, br="50"
+        self,
+        image,
+        action,
+        anim: mili.animation.ABAnimation,
+        size=62,
+        br="50",
+        tooltip=None,
     ):
         if it := self.mili.element(
             (0, 0, self.mult(size), self.mult(size)),
@@ -174,19 +200,24 @@ class UIComponent:
                     "color": (cond(self.app, it, MODAL_CV, MODALB_CV[1], MODALB_CV[2]),)
                     * 3,
                     "border_radius": br,
+                    "pad": self.mult(
+                        anim.value / 2 if br != "50" else anim.value / 2, False
+                    ),
                 }
-                | mili.style.same(
-                    (anim.value if br != "50" else anim.value / 1.8), "padx", "pady"
-                )
             )
             self.mili.image(
                 image,
-                mili.style.same(self.mult(3) + anim.value, "padx", "pady")
-                | {"smoothscale": True, "cache": mili.ImageCache.get_next_cache()},
+                {
+                    "smoothscale": True,
+                    "cache": mili.ImageCache.get_next_cache(),
+                    "pad": self.mult(anim.value, False) + self.mult(3),
+                },
             )
             if self.app.can_interact():
                 if it.hovered or it.unhover_pressed:
                     self.app.cursor_hover = True
+                if it.hovered:
+                    self.app.tick_tooltip(tooltip)
                 if it.left_just_released:
                     action()
                 if it.just_hovered:
@@ -197,7 +228,12 @@ class UIComponent:
                 anim.goto_a()
 
     def ui_overlay_btn(
-        self, anim: mili.animation.ABAnimation, on_action, image, side="bottom"
+        self,
+        anim: mili.animation.ABAnimation,
+        on_action,
+        image,
+        side="bottom",
+        tooltip=None,
     ):
         size = self.mult(50)
         offset = self.mult(8)
@@ -234,17 +270,24 @@ class UIComponent:
             {"ignore_grid": True, "clip_draw": False},
         ):
             self.mili.circle(
-                {"color": (cond(self.app, it, *OVERLAY_CV),) * 3, "border_radius": "50"}
-                | mili.style.same(-self.mult(abs(anim.value) / 1.8), "padx", "pady")
+                {
+                    "color": (cond(self.app, it, *OVERLAY_CV),) * 3,
+                    "border_radius": "50",
+                    "pad": -self.mult(abs(anim.value) / 2.2),
+                }
             )
             self.mili.image(
                 image,
-                {"cache": mili.ImageCache.get_next_cache()}
-                | mili.style.same(self.mult(8 + anim.value / 1.8), "padx", "pady"),
+                {
+                    "cache": mili.ImageCache.get_next_cache(),
+                    "pad": self.mult(8 + anim.value / 1.8),
+                },
             )
             if self.app.can_interact():
                 if it.hovered or it.unhover_pressed:
                     self.app.cursor_hover = True
+                if it.hovered:
+                    self.app.tick_tooltip(tooltip)
                 if it.just_hovered:
                     anim.goto_b()
                 if it.left_just_released:
@@ -263,6 +306,7 @@ class UIComponent:
         side,
         sidei=0,
         red=False,
+        tooltip=None,
     ):
         if self.app.custom_title:
             size = self.app.tbarh
@@ -306,17 +350,21 @@ class UIComponent:
                 color = (cond(self.app, it, *TOPB_CV),) * 3
             animvalue = 0 if side == "left" else anim.value
             self.mili.rect(
-                {"color": color, "border_radius": 0}
-                | mili.style.same(int(animvalue), "padx", "pady")
+                {"color": color, "border_radius": 0, "pad": int(animvalue) / 1.5}
             )
             self.mili.image(
                 image,
-                {"cache": mili.ImageCache.get_next_cache(), "smoothscale": True}
-                | mili.style.same(self.mult(3 + anim.value), "padx", "pady"),
+                {
+                    "cache": mili.ImageCache.get_next_cache(),
+                    "smoothscale": True,
+                    "pad": self.mult(3 + anim.value),
+                },
             )
             if self.app.can_interact():
                 if it.hovered or it.unhover_pressed:
                     self.app.cursor_hover = True
+                if it.hovered:
+                    self.app.tick_tooltip(tooltip)
                 if it.just_hovered:
                     anim.goto_b()
                 if it.left_just_released:

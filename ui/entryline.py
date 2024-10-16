@@ -93,8 +93,11 @@ class UIEntryline:
         )
 
     def ui(self, mili_: mili.MILI, rect, style, mult, bgcol=20, outlinecol=40):
-        with mili_.begin(rect, style | {"axis": "x"}, get_data=True) as data:
-            rect = data.rect
+        with mili_.begin(
+            rect,
+            style | {"axis": "x"},
+        ) as data:
+            rect = data.data.rect
             mili_.rect({"color": (bgcol,) * 3, "border_radius": 0})
             mili_.rect(
                 {
@@ -120,7 +123,6 @@ class UIEntryline:
                         self.draw_cursor, size.x, offsetx
                     ),
                 },
-                get_data=True,
             ):
                 text = self.text
                 if len(self.text) == 1:

@@ -46,6 +46,7 @@ class HistoryUI(UIComponent):
                 self.anim_back,
                 self.back,
                 self.app.back_image,
+                tooltip="Back to settings",
             )
 
     def ui_modal_content(self):
@@ -57,10 +58,15 @@ class HistoryUI(UIComponent):
                 "History", {"size": self.mult(26)}, None, mili.CENTER
             )
             self.ui_image_btn(
-                self.app.delete_image, self.action_clear, self.anim_clear, 30
+                self.app.delete_image,
+                self.action_clear,
+                self.anim_clear,
+                30,
+                tooltip="Clear the history",
             )
         with self.mili.begin(
-            None, {"fillx": True, "filly": True} | mili.PADLESS, get_data=True
+            None,
+            {"fillx": True, "filly": True} | mili.PADLESS,
         ) as cont:
             self.scroll.update(cont)
             self.scrollbar.short_size = self.mult(self.sbar_size)
@@ -92,6 +98,7 @@ class HistoryUI(UIComponent):
                         handle.hovered or handle.unhover_pressed
                     ) and self.app.can_interact():
                         self.app.cursor_hover = True
+                        self.app.tick_tooltip(None)
 
     def ui_history(self, history: HistoryData):
         if history.duration == "not cached" and history.music.pos_supported:
@@ -111,17 +118,18 @@ class HistoryUI(UIComponent):
                 "spacing": 0,
                 "align": "center",
             },
-            get_data=True,
         ) as it:
             self.mili.rect({"color": (cond(self.app, it, *MENUB_CV),) * 3})
             self.ui_history_title(history)
-            self.ui_history_time(history, it.rect)
+            self.ui_history_time(history, it.data.rect)
 
             if self.app.can_interact():
                 if it.left_just_released:
                     self.restore_history(history)
                 if it.hovered or it.unhover_pressed:
                     self.app.cursor_hover = True
+                if it.hovered:
+                    self.app.tick_tooltip("Restore track at position")
 
     def ui_history_time(self, history: HistoryData, cont_rect):
         if history.music.pos_supported:
@@ -130,18 +138,16 @@ class HistoryUI(UIComponent):
                 {"color": (120,) * 3, "size": self.mult(2)},
                 (0, 0, 0, self.mult(2)),
                 {"fillx": True, "blocking": False},
-                get_data=True,
             )
-            w = (data.rect.w) * (history.position / history.duration)
+            w = (data.data.rect.w) * (history.position / history.duration)
             self.mili.line_element(
                 [("-49.5", 0), ("49.5", 0)],
                 {"color": "red", "size": self.mult(2)},
-                (data.rect.topleft, (w, data.rect.h)),
+                (data.data.rect.topleft, (w, data.data.rect.h)),
                 {"ignore_grid": True, "blocking": False},
             )
             txt, txtstyle = (
-                f"{int(history.position/60):.0f}:{history.position %
-                                                  60:.0f}/{int(history.duration/60):.0f}:{history.duration % 60:.0f}",
+                format_music_time(history.position, history.duration),
                 {"size": self.mult(15), "color": (120,) * 3},
             )
             size = self.mili.text_size(txt, txtstyle)

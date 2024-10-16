@@ -44,9 +44,7 @@ class ChangeCoverUI(UIComponent):
                 self.ui_modal_content()
 
             self.ui_overlay_btn(
-                self.anim_close,
-                self.close,
-                self.app.close_image,
+                self.anim_close, self.close, self.app.close_image, tooltip="Close"
             )
 
     def ui_modal_content(self):
@@ -64,15 +62,30 @@ class ChangeCoverUI(UIComponent):
                 "align": "center",
             },
         ):
-            self.ui_image_btn(self.app.reset_image, self.action_reset, self.anims[0])
             self.ui_image_btn(
-                self.brush_image, self.action_generate_cover, self.anims[1]
+                self.app.reset_image,
+                self.action_reset,
+                self.anims[0],
+                tooltip="Use the default playlist cover",
             )
             self.ui_image_btn(
-                self.upload_image, self.action_file_from_dialog, self.anims[2], br="30"
+                self.brush_image,
+                self.action_generate_cover,
+                self.anims[1],
+                tooltip="Automatically generate the cover",
             )
             self.ui_image_btn(
-                self.app.confirm_image, self.action_confirm, self.anims[3]
+                self.upload_image,
+                self.action_file_from_dialog,
+                self.anims[2],
+                br="30",
+                tooltip="Load the cover from an image",
+            )
+            self.ui_image_btn(
+                self.app.confirm_image,
+                self.action_confirm,
+                self.anims[3],
+                tooltip="Apply the cover",
             )
         self.ui_info()
 

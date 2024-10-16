@@ -36,9 +36,7 @@ class RenamePlaylistUI(UIComponent):
                 self.ui_modal_content()
 
             self.ui_overlay_btn(
-                self.anim_close,
-                self.close,
-                self.app.close_image,
+                self.anim_close, self.close, self.app.close_image, tooltip="Close"
             )
 
     def ui_modal_content(self):
@@ -57,7 +55,12 @@ class RenamePlaylistUI(UIComponent):
             {"align": "center"},
             self.mult,
         )
-        self.ui_image_btn(self.app.confirm_image, self.action_confirm, self.anim_create)
+        self.ui_image_btn(
+            self.app.confirm_image,
+            self.action_confirm,
+            self.anim_create,
+            tooltip="Confirm and rename the playlist",
+        )
         self.mili.text_element(
             "Renaming might take some time if video files were present",
             {

@@ -24,6 +24,9 @@ class MiniplayerUI:
         self.click_event = False
         self.start_time = pygame.time.get_ticks()
         self.mouse_data = []
+        self.last_size = MINIP_PREFERRED_SIZES
+        self.last_pos = None
+        self.last_borderless = True
         self.custom_borders = mili.CustomWindowBorders(
             self.window,
             RESIZE_SIZE,
@@ -51,12 +54,21 @@ class MiniplayerUI:
         return max(1, int(v * self.ui_mult * 0.7))
 
     def open(self):
-        self.window = pygame.Window(
-            "MP Miniplayer",
-            MINIP_PREFERRED_SIZES,
-            resizable=True,
-            borderless=True,
-        )
+        if self.last_pos is None:
+            self.window = pygame.Window(
+                "MP Miniplayer",
+                self.last_size,
+                resizable=True,
+                borderless=self.last_borderless,
+            )
+        else:
+            self.window = pygame.Window(
+                "MP Miniplayer",
+                self.last_size,
+                self.last_pos,
+                resizable=True,
+                borderless=self.last_borderless,
+            )
         self.window.always_on_top = True
         self.window.minimum_size = (100, 100)
         self.window.get_surface()
@@ -81,7 +93,15 @@ class MiniplayerUI:
             self.canresize = True
             self.window.resizable = True
 
+    def save_state(self):
+        if self.window is None:
+            return
+        self.last_size = self.window.size
+        self.last_pos = self.window.position
+        self.last_borderless = self.window.borderless
+
     def close(self):
+        self.save_state()
         self.window.destroy()
         self.window = None
         self.focused = False
@@ -207,12 +227,11 @@ class MiniplayerUI:
                 midbottom=(self.window.size[0] / 2, self.window.size[1] - self.mult(3))
             ),
             {"align": "center", "ignore_grid": True},
-            get_data=True,
         )
         self.mili.line_element(
             [(-totalw / 2, 0), (-totalw / 2 + sizeperc, 0)],
             {"color": (255, 0, 0), "size": self.mult(2)},
-            data.absolute_rect,
+            data.data.absolute_rect,
             {"ignore_grid": True, "parent_id": 0, "z": 99999},
         )
 
@@ -242,10 +261,9 @@ class MiniplayerUI:
                 "axis": "x",
                 "ignore_grid": True,
             },
-            get_data=True,
         ) as data:
             shift = pygame.key.get_mods() & pygame.KMOD_SHIFT
-            self.controls_rect = data.rect
+            self.controls_rect = data.data.rect
             self.mili.image(
                 self.bg_surf,
                 {
@@ -305,8 +323,10 @@ class MiniplayerUI:
                 )
             self.mili.image(
                 image,
-                {"cache": mili.ImageCache.get_next_cache()}
-                | mili.style.same(self.mult(1) + anim.value / 3, "padx", "pady"),
+                {
+                    "cache": mili.ImageCache.get_next_cache(),
+                    "pad": self.mult(1) + anim.value / 3,
+                },
             )
             if (
                 (it.left_just_released and self.can_focus_click())

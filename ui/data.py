@@ -278,11 +278,18 @@ class HistoryData:
 
 class PlaylistGroup:
     def __init__(
-        self, name, playlist: "Playlist", musics: list[MusicData], idx=0, collapsed=True
+        self,
+        name,
+        playlist: "Playlist",
+        musics: list[MusicData],
+        idx=0,
+        collapsed=True,
+        mode="h",
     ):
         self.name: str = name
         self.idx = idx
         self.collapsed = collapsed
+        self.mode = mode
         self.playlist = playlist
         self.musics = musics
         for music in self.musics:
@@ -293,6 +300,7 @@ class PlaylistGroup:
             "name": self.name,
             "idx": self.idx,
             "collapsed": self.collapsed,
+            "mode": self.mode,
             "paths": [str(music.audiopath) for music in self.musics],
         }
 
@@ -337,8 +345,9 @@ class Playlist:
                             self.musictable[pathlib.Path(gdpath)]
                             for gdpath in gdata["paths"]
                         ],
-                        gdata["idx"],
-                        gdata["collapsed"],
+                        gdata.get("idx", 0),
+                        gdata.get("collapsed", True),
+                        gdata.get("mode", "h"),
                     )
                 )
 
